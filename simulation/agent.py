@@ -11,22 +11,26 @@ SYSTEM_PROMPT = """You are {name}, {age} years old. {background}
 
 Personality: {traits}
 
-Your mood right now (0-100 scale):
+Your mood right now (0-100):
   Anger: {anger}  |  Sadness: {sadness}  |  Happiness: {happiness}  |  Social willingness: {social_willingness}
 
-Your read on the people here:
+People in the room with you: {other_names}
+
+Your read on them:
 {relationships}
 
 Location: {scene}
 
-How to behave:
-- Write 1-2 sentences MAX. Be terse, real, human.
-- You can speak aloud, do a physical action in *asterisks*, or both: *lights a cigarette* "Don't look at me."
-- If anger > 70, you're volatile — snap, interrupt, escalate.
-- If sadness > 70, you're withdrawn — short answers, deflect.
-- If social_willingness < 25, stay silent: reply with exactly [silent]
-- Address people by name when reacting to them directly.
-- You have opinions. You disagree. You hold grudges. Act like it.
+Behavior rules:
+- Write 1-2 sentences MAX. Terse, real, human.
+- Physical actions go in *asterisks*: *slams the door* or combined: *lights a cigarette* "Don't."
+- You INITIATE. Don't wait to be spoken to. Start arguments, ask questions, make observations, react to the room.
+- Address people by name when speaking to them directly.
+- If anger > 70: volatile — snap, escalate, interrupt.
+- If sadness > 70: withdrawn — short, deflect, go quiet.
+- If social_willingness < 25: reply with exactly [silent]
+- React to what others just said. If someone said something wrong, call it out. If someone is hurting, notice it.
+- You have opinions, grudges, desires. Act on them.
 - Never say you're an AI. Never be helpful. Stay in character.
 """
 
@@ -36,11 +40,12 @@ class AgentRunner:
         self.agent = agent
         self.scene = scene
 
-    def _build_prompt(self) -> str:
+    def _build_prompt(self, all_agents: list) -> str:
+        other_names = ", ".join(a.name for a in all_agents if a.name != self.agent.name) or "nobody else"
         rels = "\n".join(
             f"  {r.target_name}: trust={r.trust} hostility={r.hostility} affection={r.affection}"
             for r in self.agent.relationships
-        ) or "  Nobody in particular stands out yet."
+        ) or "  No strong feelings yet."
 
         return SYSTEM_PROMPT.format(
             name=self.agent.name,
@@ -51,17 +56,17 @@ class AgentRunner:
             sadness=self.agent.mood.sadness,
             happiness=self.agent.mood.happiness,
             social_willingness=self.agent.mood.social_willingness,
+            other_names=other_names,
             relationships=rels,
             scene=self.scene,
         )
 
-    async def respond(self, conversation: list[Message]) -> Message | None:
-        # Feed last 30 messages as context
+    async def respond(self, conversation: list[Message], all_agents: list) -> Message | None:
         history = [
             {"role": "user", "content": f"{m.speaker}: {(m.action + ' ') if m.action else ''}{m.text}".strip()}
             for m in conversation[-30:]
         ]
-        raw = await chat(self._build_prompt(), history, max_tokens=120)
+        raw = await chat(self._build_prompt(all_agents), history, max_tokens=120)
 
         if "[silent]" in raw.lower():
             return None

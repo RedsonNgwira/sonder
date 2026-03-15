@@ -9,7 +9,6 @@ import random
 from db.models import World, Message
 from db.database import save_world
 from simulation.agent import AgentRunner
-from config import get_config
 
 
 def _pick_speakers(world: World) -> list:
@@ -48,7 +47,7 @@ async def run_turn(
     runners = [AgentRunner(a, world.scene_description) for a in speakers]
 
     responses = await asyncio.gather(
-        *[r.respond(world.conversation) for r in runners],
+        *[r.respond(world.conversation, world.agents) for r in runners],
         return_exceptions=True,
     )
 
@@ -63,7 +62,7 @@ async def run_turn(
             a_runner.update_mood(response, world.agents)
 
         await broadcast(response.model_dump())
-        await asyncio.sleep(cfg.simulation_tick_ms / 1000)
+        await asyncio.sleep(0.8)  # stagger messages within a turn
 
     # Recompute atmosphere from agent moods
     if world.agents:
