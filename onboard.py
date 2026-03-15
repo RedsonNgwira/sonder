@@ -207,12 +207,11 @@ def run():
         spinner_stop(f"{len(models)} models found" if models else "offline — enter manually")
 
         if models:
-            picked = questionary.autocomplete(
+            picked = questionary.select(
                 "  Select model",
                 choices=models,
-                default=default_model if default_model in models else (models[0] if models else ""),
+                default=default_model if default_model in models else models[0],
                 style=STYLE,
-                validate=lambda v: v in models or "Pick from the list",
             ).ask()
         else:
             picked = questionary.text(f"  Model", default=default_model, style=STYLE).ask()
