@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import config, save_config
+import config as _cfg
+from config import save_config, load_config
 from db.database import init_db, save_world, load_world, list_worlds, delete_world
 from db.models import Message, World
 from simulation.world_builder import build_world
@@ -28,9 +29,9 @@ connections: dict[str, list[WebSocket]] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    if config.open_browser:
+    if _cfg.config.open_browser:
         asyncio.get_event_loop().call_later(
-            1.0, webbrowser.open, f"http://localhost:{config.port}"
+            1.0, webbrowser.open, f"http://localhost:{_cfg.config.port}"
         )
     yield
 
@@ -50,23 +51,22 @@ def health():
 
 @app.get("/api/config")
 def get_config():
-    return config.model_dump(exclude={"api_key"})  # never expose key to frontend
+    return _cfg.config.model_dump(exclude={"api_key"})
 
 
 @app.get("/api/setup/needed")
 def setup_needed():
-    return {"needed": not config.is_setup()}
+    return {"needed": not _cfg.config.is_setup()}
 
 
 @app.get("/api/providers")
 def get_providers():
-    """Return list of built-in providers and their auth status."""
     from config import BUILTIN_PROVIDERS
     import os
     result = []
     for provider, env_var in BUILTIN_PROVIDERS.items():
         has_key = (
-            bool(config.keys.get(provider))
+            bool(_cfg.config.keys.get(provider))
             or (env_var and bool(os.environ.get(env_var)))
             or provider == "ollama"
         )
@@ -85,8 +85,52 @@ class ConfigUpdate(BaseModel):
 @app.post("/api/config")
 def update_config(body: ConfigUpdate):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    new_config = save_config(updates)
-    return {"ok": True, "model": new_config.model}
+    _cfg.config = save_config(updates)
+    return {"ok": True, "model": _cfg.config.model}
+
+
+@app.get("/api/models")
+async def get_models(provider: str = "openrouter"):
+    """Fetch live model list from provider API."""
+    import httpx
+    from config import BUILTIN_PROVIDERS
+
+    key = _cfg.config.keys.get(provider) or ""
+
+    try:
+        if provider == "openrouter":
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get("https://openrouter.ai/api/v1/models",
+                                     headers={"Authorization": f"Bearer {key}"} if key else {})
+            models = [f"openrouter/{m['id']}" for m in r.json().get("data", [])]
+
+        elif provider == "groq":
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get("https://api.groq.com/openai/v1/models",
+                                     headers={"Authorization": f"Bearer {key}"})
+            models = [f"groq/{m['id']}" for m in r.json().get("data", [])]
+
+        elif provider == "ollama":
+            async with httpx.AsyncClient(timeout=5) as client:
+                r = await client.get("http://localhost:11434/api/tags")
+            models = [f"ollama/{m['name']}" for m in r.json().get("models", [])]
+
+        elif provider == "openai":
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get("https://api.openai.com/v1/models",
+                                     headers={"Authorization": f"Bearer {key}"})
+            models = sorted(
+                [f"openai/{m['id']}" for m in r.json().get("data", [])
+                 if "gpt" in m["id"]],
+            )
+
+        else:
+            models = []
+
+        return {"models": models}
+
+    except Exception as e:
+        return {"models": [], "error": str(e)}
 
 
 # ── Worlds ────────────────────────────────────────────────────────────────────
@@ -109,7 +153,7 @@ class CreateWorldRequest(BaseModel):
 
 @app.post("/api/worlds")
 async def create_world(body: CreateWorldRequest):
-    agent_count = max(2, min(body.agent_count, config.max_agents))
+    agent_count = max(2, min(body.agent_count, _cfg.config.max_agents))
     world = await build_world(body.prompt, agent_count)
     save_world(world)
     return world.model_dump()
@@ -191,4 +235,4 @@ def settings():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=config.host, port=config.port, reload=False)
+    uvicorn.run("main:app", host=_cfg.config.host, port=_cfg.config.port, reload=False)

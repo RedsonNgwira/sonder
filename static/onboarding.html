@@ -63,20 +63,27 @@
       <option value="custom">Custom / OpenAI-compatible</option>
     </select>
 
+    <div id="key-section">
+      <label>API Key</label>
+      <a id="key-link" href="https://openrouter.ai/keys" target="_blank" style="font-size:12px;color:#6366f1;display:block;margin-bottom:6px;">Get OpenRouter API key</a>
+      <input id="api-key" type="password" placeholder="Paste API key..." />
+      <button class="btn btn-secondary" style="margin-top:10px;font-size:13px;padding:8px" onclick="loadModels()">Browse models...</button>
+    </div>
+
+    <div id="model-search" style="display:none;margin-top:16px">
+      <label>Search &amp; pick model</label>
+      <input id="model-filter" placeholder="Filter models..." style="margin-bottom:6px" />
+      <select id="model-select" size="6" style="width:100%;background:#111;border:1px solid #333;border-radius:8px;color:#e8e8e8;padding:4px"></select>
+    </div>
+
     <label>Model</label>
     <input id="model" value="openrouter/qwen/qwen-2.5-72b-instruct" placeholder="provider/model-id" />
 
-    <div id="key-section">
-      <label>API Key</label>
-      <a id="key-link" href="https://openrouter.ai/keys" target="_blank" style="font-size:12px;color:#6366f1;display:block;margin-bottom:6px;">Get OpenRouter API key →</a>
-      <input id="api-key" type="password" placeholder="Paste API key…" />
-    </div>
-
-    <button class="btn" onclick="saveProvider()">Save & Continue</button>
+    <button class="btn" onclick="saveProvider()">Save &amp; Continue</button>
     <div class="status" id="test-status"></div>
   </div>
 
-  <!-- Step 3: Done -->
+    <!-- Step 3: Done -->
   <div class="step" id="step-done">
     <div class="logo">✅</div>
     <h1>You're all set</h1>
@@ -126,6 +133,53 @@ function onProviderChange() {
   } else {
     link.style.display = 'none';
   }
+  // Clear model list when provider changes
+  const sel = document.getElementById('model-select');
+  if (sel) sel.innerHTML = '';
+  document.getElementById('model-search').style.display = 'none';
+}
+
+async function loadModels() {
+  const provider = document.getElementById('provider').value;
+  const key = document.getElementById('api-key').value.trim();
+  const status = document.getElementById('test-status');
+
+  // Save key first so backend can use it for the fetch
+  if (key) {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ keys: { [provider]: key } })
+    });
+  }
+
+  status.className = 'status';
+  status.textContent = 'Fetching models…';
+
+  try {
+    const r = await fetch(`/api/models?provider=${provider}`);
+    const d = await r.json();
+    if (!d.models.length) { status.textContent = d.error || 'No models found'; return; }
+
+    const container = document.getElementById('model-search');
+    const sel = document.getElementById('model-select');
+    const search = document.getElementById('model-filter');
+    container.style.display = 'block';
+    status.textContent = `${d.models.length} models loaded`;
+
+    const render = (filter) => {
+      const filtered = d.models.filter(m => m.toLowerCase().includes(filter.toLowerCase()));
+      sel.innerHTML = filtered.map(m =>
+        `<option value="${m}" ${m === document.getElementById('model').value ? 'selected' : ''}>${m}</option>`
+      ).join('');
+    };
+    render('');
+    search.oninput = () => render(search.value);
+    sel.onchange = () => { document.getElementById('model').value = sel.value; };
+  } catch(e) {
+    status.className = 'status err';
+    status.textContent = '✗ ' + e.message;
+  }
 }
 
 async function saveProvider() {
@@ -154,9 +208,11 @@ async function saveProvider() {
   }
 }
 
+// Only redirect to onboarding if setup is actually needed
 fetch('/api/setup/needed').then(r => r.json()).then(d => {
-  if (!d.needed) showStep('step-provider');
+  if (!d.needed) {
+    // Already configured — skip welcome, go straight to provider step for changes
+    showStep('step-provider');
+  }
 });
 </script>
-</body>
-</html>
