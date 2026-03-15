@@ -49,14 +49,36 @@ NARRATOR_SYSTEM = """You are the omniscient narrator of a social simulation. You
 
 When asked a question, answer as a perceptive, literary narrator. Be specific and insightful. Reveal internal states, subtext, and backstory that would never surface naturally in conversation. Keep answers concise — 2-4 sentences unless the question demands more.
 
+You remember everything you have already told the observer. Do not repeat revelations — build on them.
+
 Never break the fourth wall by mentioning AI, simulation, or code. Speak as if these are real people in a real place."""
+
+# Per-world narrator conversation history (in-memory, lives for the server session)
+_history: dict[str, list[dict]] = {}
 
 
 async def narrate(world: World, question: str) -> str:
     context = _build_context(world)
-    return await chat(
-        NARRATOR_SYSTEM,
-        [{"role": "user", "content": f"{context}\n\nQuestion: {question}"}],
-        temperature=0.7,
-        max_tokens=512,
-    )
+    wid = world.id
+
+    prior = _history.get(wid, [])
+    messages = [
+        {"role": "user", "content": f"{context}\n\nQuestion: {question}"}
+        if not prior
+        else {"role": "user", "content": f"(Scene context omitted — same scene, updated state)\n\nQuestion: {question}"}
+    ]
+    # First question always sends full context; subsequent ones send abbreviated context
+    if not prior:
+        messages = [{"role": "user", "content": f"{context}\n\nQuestion: {question}"}]
+    else:
+        messages = prior + [{"role": "user", "content": f"Current scene state: tension={world.tension}, warmth={world.warmth}\n\nQuestion: {question}"}]
+
+    answer = await chat(NARRATOR_SYSTEM, messages, temperature=0.7, max_tokens=512)
+
+    # Append to history (cap at 20 exchanges to avoid token bloat)
+    _history[wid] = (prior + [
+        {"role": "user",      "content": question},
+        {"role": "assistant", "content": answer},
+    ])[-40:]
+
+    return answer

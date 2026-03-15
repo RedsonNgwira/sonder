@@ -28,6 +28,7 @@ Nobody is being helpful. Nobody is behaving the same way. They're being human.
 - **Hot-reload** — edit any agent's `.md` file on disk and changes take effect on the next tick, no restart needed
 - **Whisper system** — send private messages to individual agents mid-scene
 - **Atmosphere tracking** — tension, noise, and warmth evolve as the scene unfolds
+- **Narrator mode** — click 🎭 to step outside the scene and ask an omniscient narrator anything: *"what is Steve thinking but not saying"*, *"who has the most power in this room"*, *"what would happen if I told everyone about the debt"*. The narrator has full access to every agent's backstory, relationships, and internal state — and remembers what it's already told you
 - **Free to run** — works with Qwen OAuth (no API key, free), Groq, Gemini free tier, OpenRouter free models, or any local Ollama model
 - **Voice** — click 🔊 on any message to hear it read aloud via browser TTS (free, no setup). Realistic voice plugins (ElevenLabs, Coqui, Piper) documented in [`plugins/PLUGINS.md`](plugins/PLUGINS.md)
 
