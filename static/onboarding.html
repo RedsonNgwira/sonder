@@ -43,13 +43,23 @@
 
     <label>Provider</label>
     <select id="provider" onchange="onProviderChange()">
-      <option value="openrouter">OpenRouter (free models available)</option>
-      <option value="ollama">Ollama (local, free)</option>
+      <option value="openrouter">OpenRouter (many free models)</option>
+      <option value="qwen-portal">Qwen (free OAuth)</option>
+      <option value="openai-codex">OpenAI Codex (ChatGPT OAuth)</option>
       <option value="anthropic">Anthropic (Claude)</option>
       <option value="openai">OpenAI (GPT)</option>
       <option value="groq">Groq (fast, free tier)</option>
-      <option value="gemini">Google Gemini</option>
-      <option value="mistral">Mistral</option>
+      <option value="gemini">Google Gemini (free tier)</option>
+      <option value="mistral">Mistral AI</option>
+      <option value="xai">xAI (Grok)</option>
+      <option value="together">Together AI (free tier)</option>
+      <option value="huggingface">Hugging Face</option>
+      <option value="moonshot">Moonshot AI (Kimi)</option>
+      <option value="minimax">MiniMax</option>
+      <option value="zai">Z.AI (GLM)</option>
+      <option value="volcengine">Volcano Engine (Doubao)</option>
+      <option value="venice">Venice AI</option>
+      <option value="ollama">Ollama (local, free)</option>
       <option value="custom">Custom / OpenAI-compatible</option>
     </select>
 
@@ -77,14 +87,24 @@
 
 <script>
 const PROVIDERS = {
-  openrouter: { model: "openrouter/qwen/qwen-2.5-72b-instruct", keyUrl: "https://openrouter.ai/keys", note: "Free models available" },
-  anthropic:  { model: "anthropic/claude-sonnet-4-5",           keyUrl: "https://console.anthropic.com/keys", note: "" },
-  openai:     { model: "openai/gpt-4o",                         keyUrl: "https://platform.openai.com/api-keys", note: "" },
-  groq:       { model: "groq/llama-3.1-70b-versatile",          keyUrl: "https://console.groq.com/keys", note: "Fast, free tier" },
-  gemini:     { model: "gemini/gemini-2.0-flash",               keyUrl: "https://aistudio.google.com/apikey", note: "Free tier" },
-  mistral:    { model: "mistral/mistral-large-latest",          keyUrl: "https://console.mistral.ai/api-keys", note: "" },
-  ollama:     { model: "ollama/llama3.3",                       keyUrl: null, note: "Local, no API key needed" },
-  custom:     { model: "",                                       keyUrl: null, note: "Any OpenAI-compatible endpoint" },
+  openrouter:    { model: "openrouter/qwen/qwen-2.5-72b-instruct",       keyUrl: "https://openrouter.ai/keys",                  note: "Many free models" },
+  "qwen-portal": { model: "qwen-portal/coder-model",                     keyUrl: "https://qianwen.aliyun.com",                  note: "Free OAuth — coming soon", oauth: true },
+  "openai-codex":{ model: "openai-codex/gpt-4o",                         keyUrl: "https://chatgpt.com",                         note: "ChatGPT OAuth — coming soon", oauth: true },
+  anthropic:     { model: "anthropic/claude-sonnet-4-5",                 keyUrl: "https://console.anthropic.com/keys",          note: "" },
+  openai:        { model: "openai/gpt-4o",                               keyUrl: "https://platform.openai.com/api-keys",        note: "" },
+  groq:          { model: "groq/llama-3.1-70b-versatile",                keyUrl: "https://console.groq.com/keys",               note: "Fast, free tier" },
+  gemini:        { model: "gemini/gemini-2.0-flash",                     keyUrl: "https://aistudio.google.com/apikey",          note: "Free tier" },
+  mistral:       { model: "mistral/mistral-large-latest",                keyUrl: "https://console.mistral.ai/api-keys",         note: "" },
+  xai:           { model: "xai/grok-2-latest",                           keyUrl: "https://console.x.ai",                        note: "" },
+  together:      { model: "together/meta-llama/Llama-3-70b-chat-hf",     keyUrl: "https://api.together.xyz/settings/api-keys",  note: "Free tier" },
+  huggingface:   { model: "huggingface/meta-llama/Llama-3.1-70B",        keyUrl: "https://huggingface.co/settings/tokens",      note: "" },
+  moonshot:      { model: "moonshot/kimi-k2.5",                          keyUrl: "https://platform.moonshot.cn",                note: "" },
+  minimax:       { model: "minimax/MiniMax-M2.5",                        keyUrl: "https://platform.minimaxi.com",               note: "" },
+  zai:           { model: "zai/glm-5",                                   keyUrl: "https://bigmodel.cn",                         note: "" },
+  volcengine:    { model: "volcengine/doubao-seed-1-8-251228",            keyUrl: "https://console.volcengine.com",              note: "" },
+  venice:        { model: "venice/llama-3.3-70b",                        keyUrl: "https://venice.ai",                           note: "Privacy-focused" },
+  ollama:        { model: "ollama/llama3.3",                             keyUrl: null,                                          note: "Local, no key needed" },
+  custom:        { model: "",                                             keyUrl: null,                                          note: "Any OpenAI-compatible endpoint" },
 };
 
 function showStep(id) {
