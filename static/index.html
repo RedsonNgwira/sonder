@@ -207,15 +207,29 @@ function toggleNarrator() {
 
 function appendNarratorMessage(question, answer) {
   const conv = document.getElementById('conversation');
-  const div = document.createElement('div');
-  div.innerHTML = `
-    <div class="narrator-msg">
-      <div class="narrator-label">🎭 Narrator</div>
-      <div style="color:#fbbf24; margin-bottom:6px; font-style:normal; font-size:12px;">You asked: ${question}</div>
-      ${answer}
-    </div>`;
-  conv.appendChild(div);
+  const wrapper = document.createElement('div');
+  const box = document.createElement('div');
+  box.className = 'narrator-msg';
+
+  const label = document.createElement('div');
+  label.className = 'narrator-label';
+  label.textContent = '🎭 Narrator';
+
+  const q = document.createElement('div');
+  q.style.cssText = 'color:#fbbf24; margin-bottom:6px; font-style:normal; font-size:12px;';
+  q.textContent = 'You asked: ' + question;
+
+  const a = document.createElement('div');
+  a.className = 'narrator-answer';
+  a.textContent = answer;
+
+  box.appendChild(label);
+  box.appendChild(q);
+  box.appendChild(a);
+  wrapper.appendChild(box);
+  conv.appendChild(wrapper);
   conv.scrollTop = conv.scrollHeight;
+  return a; // return answer node so we can update it
 }
 
 // ── WebSocket ──────────────────────────────────────────────────────────────
@@ -252,20 +266,15 @@ function sendMessage() {
   input.value = '';
 
   if (narratorMode) {
-    appendNarratorMessage(text, '<em>asking…</em>');
+    const answerNode = appendNarratorMessage(text, 'asking…');
     fetch(`/api/worlds/${currentWorld.id}/narrator`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ question: text }),
     })
     .then(r => r.json())
-    .then(data => {
-      // Replace the "asking…" placeholder with the real answer
-      const msgs = document.querySelectorAll('.narrator-msg');
-      const last = msgs[msgs.length - 1];
-      if (last) last.lastChild.textContent = data.answer || data.detail || 'No answer.';
-    })
-    .catch(e => console.error(e));
+    .then(data => { answerNode.textContent = data.answer || data.detail || 'No answer.'; })
+    .catch(e => { answerNode.textContent = 'Error: ' + e.message; });
     return;
   }
 

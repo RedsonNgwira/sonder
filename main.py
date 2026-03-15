@@ -157,7 +157,7 @@ class NarratorRequest(BaseModel):
 
 
 @app.post("/api/worlds/{world_id}/narrator")
-async def narrator(world_id: str, body: NarratorRequest):
+async def narrator_endpoint(world_id: str, body: NarratorRequest):
     world = load_world(world_id)
     if not world:
         raise HTTPException(404, "World not found")
@@ -168,7 +168,8 @@ async def narrator(world_id: str, body: NarratorRequest):
     return {"answer": answer}
 
 
-
+@app.get("/api/worlds/{world_id}")
+def get_world(world_id: str):
     world = load_world(world_id)
     if not world:
         raise HTTPException(404, "World not found")
