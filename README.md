@@ -49,14 +49,17 @@ python main.py      # open http://localhost:8080
 
 ### Providers
 
-| Provider | Cost | Setup |
-|----------|------|-------|
-| Qwen | Free | OAuth login (no key needed) |
-| Groq | Free tier | API key |
-| Gemini | Free tier | API key |
-| OpenRouter | Free models available | API key |
-| Ollama | Free, local | No key, runs on your machine |
-| Anthropic, OpenAI, Mistral, xAI... | Paid | API key |
+For the best experience — fastest responses, free, no credit card — use **Cerebras** or **Groq**. Both return responses in under a second.
+
+| Provider | Cost | Speed | Setup |
+|----------|------|-------|-------|
+| **Cerebras** | Free (1M tokens/day) | ⚡ Fastest | API key — [cloud.cerebras.ai](https://cloud.cerebras.ai) |
+| **Groq** | Free tier | ⚡ Very fast | API key — [console.groq.com](https://console.groq.com/keys) |
+| Qwen | Free | Moderate | OAuth login (no key needed) |
+| Gemini | Free tier | Moderate | API key |
+| OpenRouter | Free models available | Varies | API key |
+| Ollama | Free, local | Depends on hardware | No key, runs on your machine |
+| Anthropic, OpenAI, Mistral, xAI… | Paid | Fast | API key |
 
 ---
 

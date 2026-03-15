@@ -15,6 +15,7 @@ PROVIDERS = [
     ("qwen-portal", "Qwen",                      None,                     None,                                          "qwen-portal/coder-model",                "Free OAuth"),
     ("openrouter",  "OpenRouter",                "OPENROUTER_API_KEY",     "https://openrouter.ai/keys",                  "openrouter/qwen/qwen-2.5-72b-instruct",  "Many free models"),
     ("groq",        "Groq",                      "GROQ_API_KEY",           "https://console.groq.com/keys",               "groq/llama-3.1-70b-versatile",           "Fast, free tier"),
+    ("cerebras",    "Cerebras",                  "CEREBRAS_API_KEY",       "https://cloud.cerebras.ai",                   "cerebras/llama3.1-8b",                   "Fastest, free tier"),
     ("gemini",      "Google Gemini",              "GEMINI_API_KEY",         "https://aistudio.google.com/apikey",          "gemini/gemini-2.0-flash",                "Free tier"),
     ("anthropic",   "Anthropic",                 "ANTHROPIC_API_KEY",      "https://console.anthropic.com/keys",          "anthropic/claude-sonnet-4-5",            ""),
     ("openai",      "OpenAI",                    "OPENAI_API_KEY",         "https://platform.openai.com/api-keys",        "openai/gpt-4o",                          ""),
@@ -101,6 +102,8 @@ def fetch_models(provider_id: str, api_key: str) -> list[str]:
             return [f"openrouter/{m['id']}" for m in get("https://openrouter.ai/api/v1/models").get("data", [])]
         if provider_id == "groq":
             return [f"groq/{m['id']}" for m in get("https://api.groq.com/openai/v1/models").get("data", [])]
+        if provider_id == "cerebras":
+            return [f"cerebras/{m['id']}" for m in get("https://api.cerebras.ai/v1/models").get("data", [])]
         if provider_id == "openai":
             return sorted([f"openai/{m['id']}" for m in get("https://api.openai.com/v1/models").get("data", []) if "gpt" in m["id"]])
         if provider_id == "ollama":
