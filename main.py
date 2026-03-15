@@ -10,7 +10,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -136,20 +136,36 @@ class CreateWorldRequest(BaseModel):
 async def create_world(body: CreateWorldRequest):
     cfg = get_config()
     agent_count = max(2, min(body.agent_count, cfg.max_agents))
-    try:
-        world = await build_world(body.prompt, agent_count)
-    except Exception as e:
-        msg = str(e)
-        # Surface provider errors clearly
-        if "402" in msg or "credits" in msg.lower():
-            raise HTTPException(402, "Provider has no credits. Pick a free model or add credits.")
-        if "401" in msg or "invalid" in msg.lower():
-            raise HTTPException(401, "Invalid API key. Run `python onboard.py` to reconfigure.")
-        if "OAuth" in msg or "token" in msg.lower():
-            raise HTTPException(401, msg)
-        raise HTTPException(500, msg)
-    save_world(world)
-    return world.model_dump()
+
+    import asyncio
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def progress(msg: str):
+        await queue.put({"type": "progress", "message": msg})
+
+    async def run():
+        try:
+            world = await build_world(body.prompt, agent_count, progress)
+            save_world(world)
+            await queue.put({"type": "done", "world": world.model_dump()})
+        except Exception as e:
+            msg = str(e)
+            if "402" in msg or "credits" in msg.lower():
+                msg = "Provider has no credits. Pick a free model or add credits."
+            elif "401" in msg or "invalid" in msg.lower():
+                msg = "Invalid API key. Run `python onboard.py` to reconfigure."
+            await queue.put({"type": "error", "message": msg})
+
+    async def stream():
+        task = asyncio.create_task(run())
+        while True:
+            item = await queue.get()
+            yield f"data: {json.dumps(item)}\n\n"
+            if item["type"] in ("done", "error"):
+                break
+        task.cancel()
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 class NarratorRequest(BaseModel):

@@ -58,11 +58,18 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
 
 
-async def build_world(prompt: str, agent_count: int) -> World:
+async def build_world(prompt: str, agent_count: int, progress=None) -> World:
+    async def _p(msg: str):
+        if progress:
+            await progress(msg)
+
     # Step 1: research real behavior for this scene
+    await _p("🔍 Researching the scene…")
     research = await research_scene(prompt)
+    await _p("📚 Behavioral research complete")
 
     # Step 2: generate world + agents
+    await _p("🧠 Generating characters…")
     user = BUILDER_PROMPT.format(prompt=prompt, agent_count=agent_count, research=research or "(none available)")
     raw = await chat(
         "You are a world-building engine. Return only valid JSON.",
@@ -83,6 +90,7 @@ async def build_world(prompt: str, agent_count: int) -> World:
 
     agents = []
     for a in data["agents"]:
+        await _p(f"✍️  Writing {a['name']}…")
         relationships = [RelationshipEntry(target_name=n) for n in names if n != a["name"]]
         agent = Agent(
             name=a["name"],
@@ -109,9 +117,11 @@ async def build_world(prompt: str, agent_count: int) -> World:
     )
 
     # Step 3: write .md files
+    await _p(f"🌍 Building {world.name}…")
     write_world_md(world_slug, world.name, world.location,
                    world.scene_description, world.atmosphere, research)
     for agent in agents:
         write_agent_md(world_slug, agent, research)
 
+    await _p(f"✅ {world.name} is ready")
     return world

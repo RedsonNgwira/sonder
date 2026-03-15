@@ -181,7 +181,7 @@
       <button class="send-btn" style="flex:1" onclick="createWorld()" id="create-btn">Create World</button>
       <button class="action-btn" onclick="hideWorldModal()">Cancel</button>
     </div>
-    <div id="create-status" style="margin-top:10px; font-size:13px; color:#888; text-align:center;"></div>
+    <div id="create-status" style="margin-top:10px; font-size:13px; color:#888; max-height:160px; overflow-y:auto; line-height:1.8;"></div>
   </div>
 </div>
 
@@ -503,7 +503,8 @@ async function createWorld() {
   const btn = document.getElementById('create-btn');
   const status = document.getElementById('create-status');
   btn.disabled = true;
-  status.textContent = 'Building world…';
+  status.style.color = '#888';
+  status.innerHTML = '';
 
   try {
     const resp = await fetch('/api/worlds', {
@@ -511,16 +512,34 @@ async function createWorld() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ prompt, agent_count: parseInt(count) })
     });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({detail: resp.statusText}));
-      throw new Error(err.detail || resp.statusText);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop(); // keep incomplete line
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const item = JSON.parse(line.slice(6));
+        if (item.type === 'progress') {
+          status.innerHTML += `<div>${item.message}</div>`;
+          status.scrollTop = status.scrollHeight;
+        } else if (item.type === 'done') {
+          hideWorldModal();
+          loadWorld(item.world.id, item.world);
+          return;
+        } else if (item.type === 'error') {
+          throw new Error(item.message);
+        }
+      }
     }
-    const world = await resp.json();
-    hideWorldModal();
-    loadWorld(world.id, world);
   } catch(e) {
-    status.textContent = '✗ ' + e.message;
-    status.style.color = '#f87171';
+    status.innerHTML += `<div style="color:#f87171">✗ ${e.message}</div>`;
   } finally {
     btn.disabled = false;
   }
