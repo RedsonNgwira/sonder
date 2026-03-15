@@ -164,6 +164,7 @@ async def login(provider: str) -> bool:
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept":       "application/json",
+                    "User-Agent":   "openclaw",
                 },
             )
 

@@ -7,3 +7,4 @@ pyyaml
 aiofiles
 websockets
 httpx>=0.27
+questionary>=2.0
