@@ -68,7 +68,7 @@ class AgentRunner:
             {"role": "user", "content": f"{m.speaker}: {('*' + m.action + '* ') if m.action else ''}{m.text}".strip()}
             for m in conversation[-20:]
         ]
-        raw = await chat(self._prompt(all_agents), history, temperature=0.95, max_tokens=100)
+        raw = await chat(self._prompt(all_agents), history, temperature=0.95, max_tokens=180)
 
         if "[silent]" in raw.lower():
             return None
