@@ -92,7 +92,9 @@ def masked(k: str) -> str:
 
 def fetch_models(provider_id: str, api_key: str) -> list[str]:
     import urllib.request, json as _j
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    headers = {"User-Agent": "sonder/1.0"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     def get(url):
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=12) as r:
