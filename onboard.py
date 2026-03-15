@@ -205,16 +205,20 @@ def run():
         spinner_stop(f"{len(models)} models found" if models else "offline — enter manually")
 
         if models:
-            model = questionary.autocomplete(
+            picked = questionary.autocomplete(
                 "  Select model",
                 choices=models,
                 default=default_model if default_model in models else (models[0] if models else ""),
                 style=STYLE,
                 validate=lambda v: v in models or "Pick from the list",
-            ).ask() or default_model
+            ).ask()
         else:
-            inp = questionary.text(f"  Model", default=default_model, style=STYLE).ask().strip()
-            model = inp or default_model
+            picked = questionary.text(f"  Model", default=default_model, style=STYLE).ask()
+
+        if picked is None:
+            print("Cancelled.")
+            sys.exit(0)
+        model = picked.strip() or default_model
 
     # ── Save ──────────────────────────────────────────────────────────────────
     updates: dict = {"model": model}
