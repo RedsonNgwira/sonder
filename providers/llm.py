@@ -3,7 +3,7 @@ providers/llm.py — LiteLLM wrapper. Handles API keys and OAuth tokens transpar
 """
 import litellm
 from config import get_config
-from providers.oauth import OAUTH_PROVIDERS, get_access_token
+from providers.oauth import OAUTH_PROVIDERS, get_access_token, load_token
 
 litellm.suppress_debug_info = True
 
@@ -36,6 +36,7 @@ async def chat(
     base_url = None
 
     if provider in OAUTH_PROVIDERS:
+        token_data = load_token(provider)
         token = get_access_token(provider)
         if not token:
             raise RuntimeError(
@@ -43,8 +44,8 @@ async def chat(
                 f"Run `python onboard.py` and log in again."
             )
         api_key = token
-        base_url = _OAUTH_BASE_URLS.get(provider)
-        # Map to openai-compatible model name for LiteLLM
+        # Use resource_url from token if present, else default base URL
+        base_url = (token_data or {}).get("resource_url") or _OAUTH_BASE_URLS.get(provider)
         model = _OAUTH_MODEL_MAP.get(cfg.model, cfg.model.split("/", 1)[-1])
         if not model.startswith("openai/"):
             model = f"openai/{model}"
