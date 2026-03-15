@@ -240,14 +240,34 @@ function appendMessage(msg) {
   const div = document.createElement('div');
   div.className = 'message' + (msg.speaker === 'You' ? ' you' : '');
   const speakable = [msg.action, msg.text].filter(Boolean).join(' ');
-  div.innerHTML = `
-    <div class="msg-speaker">
-      ${msg.speaker}
-      ${speakable ? `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(speakable)})">🔊</button>` : ''}
-    </div>
-    ${msg.action ? `<div class="msg-action">*${msg.action}*</div>` : ''}
-    ${msg.text ? `<div class="msg-text">${msg.text}</div>` : ''}
-  `;
+
+  const speakerRow = document.createElement('div');
+  speakerRow.className = 'msg-speaker';
+  speakerRow.textContent = msg.speaker;
+
+  if (speakable) {
+    const btn = document.createElement('button');
+    btn.className = 'speak-btn';
+    btn.title = 'Read aloud';
+    btn.textContent = '🔊';
+    btn.addEventListener('click', () => speak(speakable));
+    speakerRow.appendChild(btn);
+  }
+
+  div.appendChild(speakerRow);
+  if (msg.action) {
+    const a = document.createElement('div');
+    a.className = 'msg-action';
+    a.textContent = `*${msg.action}*`;
+    div.appendChild(a);
+  }
+  if (msg.text) {
+    const t = document.createElement('div');
+    t.className = 'msg-text';
+    t.textContent = msg.text;
+    div.appendChild(t);
+  }
+
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
 }
