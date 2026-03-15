@@ -227,11 +227,86 @@ function setSending(v) {
   document.getElementById('send-btn').disabled = v;
 }
 
-function speak(text) {
+// ── Voice assignment ──────────────────────────────────────────────────────────
+// Maps agent name → { voice, pitch, rate } assigned when world loads.
+const agentVoices = {};
+
+// Feminine-leaning names heuristic (common English/international)
+const FEMININE_NAMES = new Set([
+  'emma','olivia','ava','isabella','sophia','mia','charlotte','amelia','harper','evelyn',
+  'abigail','emily','elizabeth','sofia','ella','madison','scarlett','victoria','aria','grace',
+  'chloe','penelope','layla','riley','zoey','nora','lily','eleanor','hannah','lillian',
+  'addison','aubrey','ellie','stella','natalie','zoe','leah','hazel','violet','aurora',
+  'savannah','audrey','brooklyn','bella','claire','skylar','lucy','paisley','everly','anna',
+  'caroline','nova','genesis','emilia','kennedy','samantha','maya','willow','kinsley','naomi',
+  'aaliyah','elena','sarah','ariana','allison','gabriella','alice','madelyn','cora','ruby',
+  'eva','serenity','autumn','adeline','hailey','gianna','valentina','isla','eliana','quinn',
+  'nevaeh','ivy','sadie','piper','lydia','alexa','josephine','emery','julia','delilah',
+  'arianna','vivian','kaylee','sophie','brielle','madeline','peyton','rylee','clara','hadley',
+  'melanie','mackenzie','reagan','adalynn','liliana','aubree','jade','katherine','isabelle',
+  'natalia','raelynn','maria','lena','jess','jessica','kate','katie','amy','lisa','linda',
+  'patricia','barbara','margaret','sandra','ashley','dorothy','kimberly','donna','carol',
+  'michelle','amanda','melissa','deborah','stephanie','rebecca','sharon','laura','cynthia',
+  'kathleen','amy','angela','shirley','anna','brenda','pamela','emma','nicole','helen',
+  'samantha','katherine','christine','debra','rachel','carolyn','janet','catherine','maria',
+  'heather','diane','julie','joyce','victoria','kelly','christina','lauren','joan','evelyn',
+  'judith','olivia','cheryl','megan','andrea','ann','alice','jean','danielle','beverly',
+  'tammy','denise','theresa','irene','jane','lori','marilyn','andrea','katelyn','sofia',
+  'riya','priya','ananya','divya','pooja','neha','shreya','kavya','meera','nisha',
+  'aisha','fatima','zara','layla','yasmin','nadia','sara','leila','amira','hana',
+  'yuki','sakura','hana','mei','rin','akari','yuna','sora','nana','momo',
+]);
+
+function guessGender(name) {
+  return FEMININE_NAMES.has(name.toLowerCase()) ? 'female' : 'male';
+}
+
+function buildAgentVoices(agents) {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return; // voices not loaded yet, will retry
+
+  const maleVoices   = voices.filter(v => /male|man|guy|david|mark|daniel|james|george|thomas|alex|fred|bruce|ralph|junior|albert|bad|good|hysterical|organ|cellos|bells|boing|bubbles|deranged|trinoids|whisper|zarvox|pipe/i.test(v.name) && !/female|woman|girl/i.test(v.name));
+  const femaleVoices = voices.filter(v => /female|woman|girl|samantha|victoria|karen|moira|tessa|fiona|veena|alice|amelie|anna|joana|ioana|lekha|luciana|milena|paulina|sara|soledad|yuna|kyoko|sin-ji|ting-ting|mei-jia|zosia|mariska|laura|monica|nora|ellen|claire|alva|ida|kanya|damayanti|yelda|xander|luca|reed|sandy|shelley|grandma|junior/i.test(v.name));
+
+  // Fallback: split available voices in half
+  const half = Math.floor(voices.length / 2);
+  const fallbackMale   = voices.slice(0, half).length   ? voices.slice(0, half)   : voices;
+  const fallbackFemale = voices.slice(half).length      ? voices.slice(half)      : voices;
+
+  const pickVoice = (gender, idx) => {
+    const pool = gender === 'female'
+      ? (femaleVoices.length ? femaleVoices : fallbackFemale)
+      : (maleVoices.length   ? maleVoices   : fallbackMale);
+    return pool[idx % pool.length];
+  };
+
+  const genderCount = { male: 0, female: 0 };
+  agents.forEach(a => {
+    const gender = guessGender(a.name);
+    const idx    = genderCount[gender]++;
+    const voice  = pickVoice(gender, idx);
+    const age    = a.age || 30;
+    // Older → lower pitch, slower rate
+    const pitch  = gender === 'female'
+      ? Math.max(0.8, 1.3 - (age - 20) * 0.008)
+      : Math.max(0.6, 1.0 - (age - 20) * 0.008);
+    const rate   = Math.max(0.75, 1.05 - (age - 20) * 0.004);
+    agentVoices[a.name] = { voice, pitch, rate };
+  });
+}
+
+function speak(text, agentName) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.95;
+  const av = agentVoices[agentName];
+  if (av) {
+    if (av.voice) u.voice = av.voice;
+    u.pitch = av.pitch;
+    u.rate  = av.rate;
+  } else {
+    u.rate = 0.95;
+  }
   window.speechSynthesis.speak(u);
 }
 
@@ -250,7 +325,7 @@ function appendMessage(msg) {
     btn.className = 'speak-btn';
     btn.title = 'Read aloud';
     btn.textContent = '🔊';
-    btn.addEventListener('click', () => speak(speakable));
+    btn.addEventListener('click', () => speak(speakable, msg.speaker));
     speakerRow.appendChild(btn);
   }
 
@@ -395,6 +470,11 @@ async function loadWorld(id, worldData) {
   document.getElementById('conversation').innerHTML = '';
   (currentWorld.conversation || []).forEach(appendMessage);
   renderAgents(currentWorld.agents);
+  // Assign distinct voices — retry after voiceschanged if not ready yet
+  buildAgentVoices(currentWorld.agents);
+  if (!Object.keys(agentVoices).length) {
+    window.speechSynthesis.onvoiceschanged = () => buildAgentVoices(currentWorld.agents);
+  }
   updateAtmosphere({ tension: currentWorld.tension, noise: currentWorld.noise, warmth: currentWorld.warmth });
   connectWS(currentWorld.id);
   hideWorldModal();
