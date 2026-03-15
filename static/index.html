@@ -87,8 +87,10 @@
   .event-item { font-size: 12px; color: #666; margin-bottom: 6px; line-height: 1.4; }
 
   /* World selector overlay */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
   .overlay.hidden { display: none; }
+  @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .build-line { animation: fadein 0.3s ease forwards; }
   .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 32px; width: 520px; max-height: 80vh; overflow-y: auto; }
   .modal h2 { margin-bottom: 20px; }
   .modal textarea { width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
@@ -181,7 +183,15 @@
       <button class="send-btn" style="flex:1" onclick="createWorld()" id="create-btn">Create World</button>
       <button class="action-btn" onclick="hideWorldModal()">Cancel</button>
     </div>
-    <div id="create-status" style="margin-top:10px; font-size:13px; color:#888; max-height:160px; overflow-y:auto; line-height:1.8;"></div>
+  </div>
+</div>
+
+<!-- Building modal -->
+<div class="overlay hidden" id="build-modal">
+  <div style="text-align:center; max-width:480px; width:100%; padding:0 24px;">
+    <div style="font-size:32px; margin-bottom:24px;">🌍</div>
+    <div style="font-size:18px; font-weight:600; margin-bottom:32px; color:#e8e8e8;">Building your world…</div>
+    <div id="build-log" style="text-align:left; font-size:15px; line-height:2.2; color:#aaa; min-height:120px;"></div>
   </div>
 </div>
 
@@ -501,10 +511,22 @@ async function createWorld() {
   if (!prompt) return;
   const count = document.getElementById('agent-count').value;
   const btn = document.getElementById('create-btn');
-  const status = document.getElementById('create-status');
   btn.disabled = true;
-  status.style.color = '#888';
-  status.innerHTML = '';
+
+  // Switch to build modal
+  document.getElementById('world-modal').classList.add('hidden');
+  const buildModal = document.getElementById('build-modal');
+  const buildLog   = document.getElementById('build-log');
+  buildModal.classList.remove('hidden');
+  buildLog.innerHTML = '';
+
+  const addLine = (text, color) => {
+    const div = document.createElement('div');
+    div.className = 'build-line';
+    div.style.color = color || '#aaa';
+    div.textContent = text;
+    buildLog.appendChild(div);
+  };
 
   try {
     const resp = await fetch('/api/worlds', {
@@ -522,15 +544,15 @@ async function createWorld() {
       if (done) break;
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
-      buf = lines.pop(); // keep incomplete line
+      buf = lines.pop();
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const item = JSON.parse(line.slice(6));
         if (item.type === 'progress') {
-          status.innerHTML += `<div>${item.message}</div>`;
-          status.scrollTop = status.scrollHeight;
+          addLine(item.message);
         } else if (item.type === 'done') {
-          hideWorldModal();
+          addLine('', '');
+          buildModal.classList.add('hidden');
           loadWorld(item.world.id, item.world);
           return;
         } else if (item.type === 'error') {
@@ -539,7 +561,7 @@ async function createWorld() {
       }
     }
   } catch(e) {
-    status.innerHTML += `<div style="color:#f87171">✗ ${e.message}</div>`;
+    addLine('✗ ' + e.message, '#f87171');
   } finally {
     btn.disabled = false;
   }
