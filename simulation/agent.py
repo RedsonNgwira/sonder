@@ -47,6 +47,8 @@ class AgentRunner:
             for r in self.agent.relationships
         ) or "  No strong feelings yet — but you're watching."
         m = self.agent.mood
+        behavioral_notes = self.agent.memory[0] if self.agent.memory else ""
+        notes_section = f"\nBehavioral notes:\n{behavioral_notes}\n" if behavioral_notes else ""
         return SYSTEM_PROMPT.format(
             name=self.agent.name,
             age=self.agent.age,
@@ -59,7 +61,7 @@ class AgentRunner:
             other_names=other_names,
             relationships=rels,
             scene=self.scene,
-        )
+        ) + notes_section
 
     async def respond(self, conversation: list[Message], all_agents: list[Agent]) -> Message | None:
         history = [

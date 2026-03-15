@@ -1,5 +1,5 @@
 """
-db/models.py — Pydantic models for worlds, agents, and messages.
+db/models.py — Core data models for Sonder.
 """
 from __future__ import annotations
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ import time
 
 
 class MoodState(BaseModel):
-    anger: int = 20          # 0-100
+    anger: int = 20
     sadness: int = 20
     happiness: int = 60
     social_willingness: int = 70
@@ -17,7 +17,7 @@ class MoodState(BaseModel):
 
 class RelationshipEntry(BaseModel):
     target_name: str
-    trust: int = 50          # 0-100
+    trust: int = 50
     hostility: int = 20
     affection: int = 30
 
@@ -32,11 +32,12 @@ class Agent(BaseModel):
     current_grievance: str = ""
     mood: MoodState = Field(default_factory=MoodState)
     relationships: list[RelationshipEntry] = []
-    memory: list[str] = []   # last N exchanges as strings
+    memory: list[str] = []  # [0] = behavioral notes from .md; rest = recent exchanges
 
 
 class World(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    slug: str = ""          # filesystem slug for .md files
     name: str
     scene_description: str
     location: str
@@ -44,14 +45,14 @@ class World(BaseModel):
     agents: list[Agent] = []
     conversation: list[Message] = []
     created_at: float = Field(default_factory=time.time)
-    tension: int = 30        # 0-100 atmosphere meters
+    tension: int = 30
     noise: int = 40
     warmth: int = 60
 
 
 class Message(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    speaker: str             # agent name or "You"
+    speaker: str
     text: str
-    action: Optional[str] = None   # italicised physical action
+    action: Optional[str] = None
     timestamp: float = Field(default_factory=time.time)

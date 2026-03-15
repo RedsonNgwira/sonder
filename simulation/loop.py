@@ -1,7 +1,6 @@
 """
 simulation/loop.py — Simulation turn runner.
-Agents speak in weighted order (angrier = more likely to speak).
-The world keeps running even when the user is silent.
+Hot-reloads agent .md files on each tick so edits take effect immediately.
 """
 from __future__ import annotations
 import asyncio
@@ -9,19 +8,15 @@ import random
 from db.models import World, Message
 from db.database import save_world
 from simulation.agent import AgentRunner
+from simulation.agent_loader import reload_agents_if_changed
 
 
 def _pick_speakers(world: World) -> list:
-    """
-    Weight by emotional intensity. Angrier/sadder agents speak more.
-    Always pick 1-3 agents per turn.
-    """
     def weight(a):
         return max(1, (a.mood.anger + a.mood.sadness + (100 - a.mood.social_willingness)) / 3)
 
     k = random.randint(1, min(3, len(world.agents)))
     weights = [weight(a) for a in world.agents]
-    # random.choices allows repeats — deduplicate by id
     seen, picked = set(), []
     for a in random.choices(world.agents, weights=weights, k=k * 3):
         if a.id not in seen:
@@ -32,12 +27,10 @@ def _pick_speakers(world: World) -> list:
     return picked
 
 
-async def run_turn(
-    world: World,
-    user_message: Message | None,
-    broadcast,
-) -> World:
-    cfg = get_config()
+async def run_turn(world: World, user_message: Message | None, broadcast) -> World:
+    # Hot-reload agents from .md files if they've changed
+    if world.slug:
+        world.agents, changed = reload_agents_if_changed(world.slug, world.agents)
 
     if user_message:
         world.conversation.append(user_message)
@@ -57,21 +50,17 @@ async def run_turn(
 
         world.conversation.append(response)
 
-        # Every agent updates mood/relationships in response to this message
-        for a_runner in [AgentRunner(a, world.scene_description) for a in world.agents]:
-            a_runner.update_mood(response, world.agents)
+        for agent in world.agents:
+            AgentRunner(agent, world.scene_description).update_mood(response, world.agents)
 
         await broadcast(response.model_dump())
-        await asyncio.sleep(0.8)  # stagger messages within a turn
+        await asyncio.sleep(0.8)
 
-    # Recompute atmosphere from agent moods
     if world.agents:
         n = len(world.agents)
         world.tension = int(sum(a.mood.anger for a in world.agents) / n * 0.9)
         world.warmth  = int(sum(a.mood.happiness for a in world.agents) / n * 0.7)
-        world.noise   = int(sum(
-            100 - a.mood.social_willingness for a in world.agents
-        ) / n * 0.6)
+        world.noise   = int(sum(100 - a.mood.social_willingness for a in world.agents) / n * 0.6)
 
     await broadcast({
         "type": "atmosphere",

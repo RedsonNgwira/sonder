@@ -1,22 +1,32 @@
 """
-simulation/world_builder.py — Build a World from a natural language scene prompt.
-Uses rich behavioral archetypes so agents feel like real people, not NPCs.
+simulation/world_builder.py — Build a World from a scene prompt.
+1. Researches real behavioral data for the scene type
+2. Generates agents grounded in that research
+3. Writes world.md + per-agent .md files
 """
 import json
+import re
+import time
 from db.models import World, Agent, MoodState, RelationshipEntry
 from providers.llm import chat
+from simulation.researcher import research_scene
+from simulation.agent_loader import write_agent_md, write_world_md
 
-BUILDER_PROMPT = """You are a social simulation engine. Your job is to populate a scene with psychologically realistic people.
+BUILDER_PROMPT = """You are a social simulation engine. Populate this scene with psychologically realistic people.
 
 Scene: {prompt}
 
-Generate exactly {agent_count} people for this scene. Each person must:
-- Have a specific reason to be in this scene right now
-- Have a concrete emotional state driven by recent events in their life
-- Have pre-existing opinions about at least one other person in the scene
-- Have a dominant personality flaw (jealousy, pride, anxiety, bitterness, impulsiveness, etc.)
+Behavioral research for this scene type:
+{research}
 
-Return ONLY this JSON, no explanation:
+Generate exactly {agent_count} people. Each must have:
+- A specific reason to be here right now
+- A concrete emotional state driven by recent events
+- Pre-existing opinions about others in the scene
+- A dominant personality flaw (jealousy, pride, bitterness, impulsiveness, etc.)
+- A distinct speaking style
+
+Return ONLY valid JSON:
 {{
   "name": "short evocative scene name",
   "location": "specific place",
@@ -29,10 +39,10 @@ Return ONLY this JSON, no explanation:
     {{
       "name": "First name only",
       "age": <number>,
-      "background": "One sentence: who they are AND why they're here AND what's eating at them right now",
-      "personality_traits": ["dominant flaw", "secondary trait", "one redeeming quality"],
-      "speaking_style": "how they talk — e.g. 'clipped and sarcastic', 'loud and defensive', 'quiet but cutting'",
-      "current_grievance": "what is bothering them most right now, in one sentence",
+      "background": "who they are AND why they're here AND what's eating at them",
+      "personality_traits": ["dominant flaw", "secondary trait", "redeeming quality"],
+      "speaking_style": "e.g. clipped and sarcastic / loud and defensive / quiet but cutting",
+      "current_grievance": "what is bothering them most right now",
       "mood": {{
         "anger": <0-100>,
         "sadness": <0-100>,
@@ -44,28 +54,37 @@ Return ONLY this JSON, no explanation:
 }}"""
 
 
+def _slugify(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
+
+
 async def build_world(prompt: str, agent_count: int) -> World:
-    system = "You are a world-building engine. Return only valid JSON."
-    user = BUILDER_PROMPT.format(prompt=prompt, agent_count=agent_count)
-    raw = await chat(system, [{"role": "user", "content": user}], temperature=0.85, max_tokens=4096)
+    # Step 1: research real behavior for this scene
+    research = await research_scene(prompt)
+
+    # Step 2: generate world + agents
+    user = BUILDER_PROMPT.format(prompt=prompt, agent_count=agent_count, research=research or "(none available)")
+    raw = await chat(
+        "You are a world-building engine. Return only valid JSON.",
+        [{"role": "user", "content": user}],
+        temperature=0.85, max_tokens=4096,
+    )
 
     raw = raw.strip()
-    # Strip markdown fences
     if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
+        raw = raw.split("```")[1].lstrip("json").strip()
     start, end = raw.find("{"), raw.rfind("}") + 1
     if start == -1:
         raise ValueError(f"No JSON in response: {raw[:300]}")
     data = json.loads(raw[start:end])
 
     names = [a["name"] for a in data["agents"]]
+    world_slug = _slugify(data["name"]) + "-" + str(int(time.time()))[-5:]
+
     agents = []
     for a in data["agents"]:
         relationships = [RelationshipEntry(target_name=n) for n in names if n != a["name"]]
-        agents.append(Agent(
+        agent = Agent(
             name=a["name"],
             age=a["age"],
             background=a["background"],
@@ -74,9 +93,10 @@ async def build_world(prompt: str, agent_count: int) -> World:
             current_grievance=a.get("current_grievance", ""),
             mood=MoodState(**a["mood"]),
             relationships=relationships,
-        ))
+        )
+        agents.append(agent)
 
-    return World(
+    world = World(
         name=data["name"],
         location=data["location"],
         scene_description=data["scene_description"],
@@ -85,4 +105,13 @@ async def build_world(prompt: str, agent_count: int) -> World:
         tension=data.get("tension", 40),
         noise=data.get("noise", 40),
         warmth=data.get("warmth", 40),
+        slug=world_slug,
     )
+
+    # Step 3: write .md files
+    write_world_md(world_slug, world.name, world.location,
+                   world.scene_description, world.atmosphere, research)
+    for agent in agents:
+        write_agent_md(world_slug, agent, research)
+
+    return world
