@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sonder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Top bar */
+  .topbar { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #1e1e1e; gap: 16px; flex-shrink: 0; }
+  .topbar h1 { font-size: 18px; font-weight: 700; color: #6366f1; }
+  .world-name { font-size: 14px; color: #aaa; }
+  .topbar-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; background: #1e1e1e; border: 1px solid #333; }
+  .badge.tension { border-color: #ef4444; color: #ef4444; }
+  .badge.warmth { border-color: #4ade80; color: #4ade80; }
+  .icon-btn { background: none; border: 1px solid #333; color: #aaa; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .icon-btn:hover { background: #1e1e1e; }
+
+  /* Main layout */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* Left panel — agents */
+  .panel-left { width: 220px; border-right: 1px solid #1e1e1e; overflow-y: auto; padding: 16px 12px; flex-shrink: 0; }
+  .panel-left h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 12px; }
+  .agent-card { padding: 10px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; }
+  .agent-card:hover { background: #1a1a1a; border-color: #2a2a2a; }
+  .agent-card.selected { background: #1a1a1a; border-color: #6366f1; }
+  .agent-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .mood-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .mood-label { font-size: 10px; color: #666; width: 14px; }
+  .mood-bar { flex: 1; height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+  .mood-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+  .fill-anger { background: #ef4444; }
+  .fill-sad { background: #60a5fa; }
+  .fill-happy { background: #4ade80; }
+  .fill-social { background: #a78bfa; }
+
+  /* Center panel — scene */
+  .panel-center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .atmosphere-bar { padding: 10px 20px; font-size: 13px; color: #888; font-style: italic; border-bottom: 1px solid #1a1a1a; flex-shrink: 0; }
+  .conversation { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .message { max-width: 80%; }
+  .message.you { align-self: flex-end; }
+  .msg-speaker { font-size: 11px; color: #666; margin-bottom: 3px; }
+  .msg-action { font-size: 13px; color: #888; font-style: italic; margin-bottom: 2px; }
+  .msg-text { font-size: 14px; line-height: 1.5; background: #1a1a1a; padding: 10px 14px; border-radius: 10px; border: 1px solid #2a2a2a; }
+  .message.you .msg-text { background: #1e1b4b; border-color: #3730a3; }
+
+  /* Input bar */
+  .input-bar { padding: 16px 20px; border-top: 1px solid #1e1e1e; display: flex; gap: 10px; flex-shrink: 0; }
+  .input-bar input { flex: 1; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; outline: none; }
+  .input-bar input:focus { border-color: #6366f1; }
+  .action-btns { display: flex; gap: 6px; }
+  .action-btn { padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #aaa; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .action-btn:hover { background: #222; }
+  .send-btn { padding: 10px 20px; background: #6366f1; border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .send-btn:hover { background: #5254cc; }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Right panel — event log */
+  .panel-right { width: 220px; border-left: 1px solid #1e1e1e; overflow-y: auto; padding: 16px 12px; flex-shrink: 0; }
+  .panel-right h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 12px; }
+  .atm-meter { margin-bottom: 14px; }
+  .atm-label { font-size: 12px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .atm-bar { height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+  .atm-fill { height: 100%; border-radius: 3px; transition: width 0.8s; }
+  .fill-tension { background: #ef4444; }
+  .fill-noise { background: #f59e0b; }
+  .fill-warmth { background: #4ade80; }
+  .event-log { margin-top: 20px; }
+  .event-log h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 10px; }
+  .event-item { font-size: 12px; color: #666; margin-bottom: 6px; line-height: 1.4; }
+
+  /* World selector overlay */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .overlay.hidden { display: none; }
+  .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 32px; width: 520px; max-height: 80vh; overflow-y: auto; }
+  .modal h2 { margin-bottom: 20px; }
+  .modal textarea { width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
+  .modal textarea:focus { border-color: #6366f1; }
+  .modal-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .modal-row label { font-size: 13px; color: #aaa; white-space: nowrap; }
+  .modal-row input[type=range] { flex: 1; }
+  .modal-row span { font-size: 13px; color: #6366f1; width: 24px; text-align: right; }
+  .world-list { margin-bottom: 24px; }
+  .world-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #111; border-radius: 8px; margin-bottom: 6px; cursor: pointer; border: 1px solid transparent; }
+  .world-item:hover { border-color: #6366f1; }
+  .world-item-name { font-size: 14px; }
+  .world-item-del { color: #666; font-size: 12px; padding: 2px 8px; border: 1px solid #333; border-radius: 4px; background: none; color: #888; cursor: pointer; }
+  .world-item-del:hover { color: #ef4444; border-color: #ef4444; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>🌐 Sonder</h1>
+  <span class="world-name" id="world-name">No world loaded</span>
+  <div class="topbar-right">
+    <span class="badge tension" id="badge-tension">Tension: —</span>
+    <span class="badge warmth" id="badge-warmth">Warmth: —</span>
+    <button class="icon-btn" onclick="showWorldModal()">⊕ New World</button>
+    <button class="icon-btn" onclick="window.location='/settings'">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Left: agents -->
+  <div class="panel-left">
+    <h3>People</h3>
+    <div id="agent-list"></div>
+  </div>
+
+  <!-- Center: scene -->
+  <div class="panel-center">
+    <div class="atmosphere-bar" id="atmosphere-text">Load a world to begin…</div>
+    <div class="conversation" id="conversation"></div>
+    <div class="input-bar">
+      <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+        <div class="action-btns" id="action-btns"></div>
+        <div style="display:flex; gap:8px;">
+          <input id="msg-input" placeholder="Say something to the room…" onkeydown="if(event.key==='Enter') sendMessage()" />
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: atmosphere + events -->
+  <div class="panel-right">
+    <h3>Atmosphere</h3>
+    <div class="atm-meter">
+      <div class="atm-label"><span>Tension</span><span id="val-tension">—</span></div>
+      <div class="atm-bar"><div class="atm-fill fill-tension" id="bar-tension" style="width:0%"></div></div>
+    </div>
+    <div class="atm-meter">
+      <div class="atm-label"><span>Noise</span><span id="val-noise">—</span></div>
+      <div class="atm-bar"><div class="atm-fill fill-noise" id="bar-noise" style="width:0%"></div></div>
+    </div>
+    <div class="atm-meter">
+      <div class="atm-label"><span>Warmth</span><span id="val-warmth">—</span></div>
+      <div class="atm-bar"><div class="atm-fill fill-warmth" id="bar-warmth" style="width:0%"></div></div>
+    </div>
+    <div class="event-log">
+      <h3>Events</h3>
+      <div id="event-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- World modal -->
+<div class="overlay hidden" id="world-modal">
+  <div class="modal">
+    <h2>Worlds</h2>
+    <div class="world-list" id="world-list"></div>
+    <h3 style="margin-bottom:12px; font-size:14px; color:#aaa;">Create new world</h3>
+    <textarea id="scene-prompt" placeholder="Describe a scene… e.g. 'A pub after Liverpool lost 3-0. Some Chelsea fans are celebrating nearby.'"></textarea>
+    <div class="modal-row">
+      <label>Agents:</label>
+      <input type="range" min="2" max="20" value="5" id="agent-count" oninput="document.getElementById('agent-count-val').textContent=this.value">
+      <span id="agent-count-val">5</span>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="send-btn" style="flex:1" onclick="createWorld()" id="create-btn">Create World</button>
+      <button class="action-btn" onclick="hideWorldModal()">Cancel</button>
+    </div>
+    <div id="create-status" style="margin-top:10px; font-size:13px; color:#888; text-align:center;"></div>
+  </div>
+</div>
+
+<script>
+let ws = null;
+let currentWorld = null;
+let agents = {};
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+
+function connectWS(worldId) {
+  if (ws) ws.close();
+  ws = new WebSocket(`ws://${location.host}/ws/${worldId}`);
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'atmosphere') {
+      updateAtmosphere(data);
+    } else if (data.speaker) {
+      appendMessage(data);
+      logEvent(`${data.speaker} spoke`);
+    }
+  };
+
+  ws.onclose = () => setTimeout(() => connectWS(worldId), 2000);
+}
+
+function sendMessage() {
+  if (!ws || !currentWorld) return;
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) { triggerAgentTurn(); return; }
+  input.value = '';
+  ws.send(JSON.stringify({ text }));
+  setSending(true);
+  setTimeout(() => setSending(false), 3000);
+}
+
+function triggerAgentTurn() {
+  if (ws) ws.send(JSON.stringify({ text: '' }));
+}
+
+function setSending(v) {
+  document.getElementById('send-btn').disabled = v;
+}
+
+// ── UI updates ─────────────────────────────────────────────────────────────
+
+function appendMessage(msg) {
+  const conv = document.getElementById('conversation');
+  const div = document.createElement('div');
+  div.className = 'message' + (msg.speaker === 'You' ? ' you' : '');
+  div.innerHTML = `
+    <div class="msg-speaker">${msg.speaker}</div>
+    ${msg.action ? `<div class="msg-action">*${msg.action}*</div>` : ''}
+    ${msg.text ? `<div class="msg-text">${msg.text}</div>` : ''}
+  `;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+  setSending(false);
+}
+
+function updateAtmosphere(data) {
+  document.getElementById('bar-tension').style.width = data.tension + '%';
+  document.getElementById('bar-noise').style.width = data.noise + '%';
+  document.getElementById('bar-warmth').style.width = data.warmth + '%';
+  document.getElementById('val-tension').textContent = data.tension;
+  document.getElementById('val-noise').textContent = data.noise;
+  document.getElementById('val-warmth').textContent = data.warmth;
+  document.getElementById('badge-tension').textContent = `Tension: ${data.tension}`;
+  document.getElementById('badge-warmth').textContent = `Warmth: ${data.warmth}`;
+
+  // Update agent mood bars
+  if (data.agents) {
+    data.agents.forEach(a => {
+      const m = a.mood;
+      ['anger','sadness','happiness','social_willingness'].forEach(k => {
+        const el = document.getElementById(`mood-${a.name}-${k}`);
+        if (el) el.style.width = m[k] + '%';
+      });
+    });
+  }
+}
+
+function renderAgents(agentList) {
+  const el = document.getElementById('agent-list');
+  el.innerHTML = '';
+  const actionBtns = document.getElementById('action-btns');
+  actionBtns.innerHTML = '';
+
+  agentList.forEach(a => {
+    const m = a.mood;
+    el.innerHTML += `
+      <div class="agent-card" id="agent-${a.name}">
+        <div class="agent-name">${a.name}</div>
+        <div class="mood-bar-row"><span class="mood-label" title="Anger">😠</span><div class="mood-bar"><div class="mood-fill fill-anger" id="mood-${a.name}-anger" style="width:${m.anger}%"></div></div></div>
+        <div class="mood-bar-row"><span class="mood-label" title="Sadness">😢</span><div class="mood-bar"><div class="mood-fill fill-sad" id="mood-${a.name}-sadness" style="width:${m.sadness}%"></div></div></div>
+        <div class="mood-bar-row"><span class="mood-label" title="Happiness">😊</span><div class="mood-bar"><div class="mood-fill fill-happy" id="mood-${a.name}-happiness" style="width:${m.happiness}%"></div></div></div>
+        <div class="mood-bar-row"><span class="mood-label" title="Social">💬</span><div class="mood-bar"><div class="mood-fill fill-social" id="mood-${a.name}-social_willingness" style="width:${m.social_willingness}%"></div></div></div>
+      </div>`;
+
+    const btn = document.createElement('button');
+    btn.className = 'action-btn';
+    btn.textContent = `Whisper to ${a.name}`;
+    btn.onclick = () => {
+      document.getElementById('msg-input').value = `[to ${a.name}] `;
+      document.getElementById('msg-input').focus();
+    };
+    actionBtns.appendChild(btn);
+  });
+
+  const silentBtn = document.createElement('button');
+  silentBtn.className = 'action-btn';
+  silentBtn.textContent = 'Stay silent';
+  silentBtn.onclick = triggerAgentTurn;
+  actionBtns.appendChild(silentBtn);
+}
+
+function logEvent(text) {
+  const log = document.getElementById('event-log');
+  const item = document.createElement('div');
+  item.className = 'event-item';
+  item.textContent = text;
+  log.prepend(item);
+  if (log.children.length > 30) log.lastChild.remove();
+}
+
+// ── World modal ────────────────────────────────────────────────────────────
+
+async function showWorldModal() {
+  document.getElementById('world-modal').classList.remove('hidden');
+  const worlds = await fetch('/api/worlds').then(r => r.json());
+  const list = document.getElementById('world-list');
+  list.innerHTML = worlds.length ? '' : '<p style="color:#555;font-size:13px;margin-bottom:16px;">No saved worlds yet.</p>';
+  worlds.forEach(w => {
+    list.innerHTML += `
+      <div class="world-item" onclick="loadWorld('${w.id}')">
+        <span class="world-item-name">${w.name}</span>
+        <button class="world-item-del" onclick="event.stopPropagation(); deleteWorld('${w.id}', this.parentElement)">Delete</button>
+      </div>`;
+  });
+}
+
+function hideWorldModal() {
+  document.getElementById('world-modal').classList.add('hidden');
+}
+
+async function createWorld() {
+  const prompt = document.getElementById('scene-prompt').value.trim();
+  if (!prompt) return;
+  const count = document.getElementById('agent-count').value;
+  const btn = document.getElementById('create-btn');
+  const status = document.getElementById('create-status');
+  btn.disabled = true;
+  status.textContent = 'Building world…';
+
+  try {
+    const world = await fetch('/api/worlds', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt, agent_count: parseInt(count) })
+    }).then(r => r.json());
+
+    hideWorldModal();
+    loadWorld(world.id, world);
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadWorld(id, worldData) {
+  currentWorld = worldData || await fetch(`/api/worlds/${id}`).then(r => r.json());
+  document.getElementById('world-name').textContent = currentWorld.name;
+  document.getElementById('atmosphere-text').textContent = currentWorld.atmosphere;
+  document.getElementById('conversation').innerHTML = '';
+
+  // Replay existing conversation
+  (currentWorld.conversation || []).forEach(appendMessage);
+
+  renderAgents(currentWorld.agents);
+  updateAtmosphere({ tension: currentWorld.tension, noise: currentWorld.noise, warmth: currentWorld.warmth });
+  connectWS(id);
+  hideWorldModal();
+}
+
+async function deleteWorld(id, el) {
+  await fetch(`/api/worlds/${id}`, { method: 'DELETE' });
+  el.remove();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+fetch('/api/setup/needed').then(r => r.json()).then(d => {
+  if (d.needed) window.location = '/onboarding';
+});
+</script>
+</body>
+</html>

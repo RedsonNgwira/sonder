@@ -1,0 +1,8 @@
+config.yaml
+sonder.db
+logs/
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/

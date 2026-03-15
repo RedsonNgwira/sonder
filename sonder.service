@@ -1,0 +1,15 @@
+[Unit]
+Description=Sonder — Social Simulation Engine
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/opt/sonder
+ExecStart=/opt/sonder/venv/bin/python main.py
+Restart=always
+RestartSec=5
+Environment=SONDER_OPEN_BROWSER=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  sonder:
+    image: sonder
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - sonder_data:/app/data
+    environment:
+      - SONDER_OPEN_BROWSER=false
+    restart: unless-stopped
+
+volumes:
+  sonder_data:

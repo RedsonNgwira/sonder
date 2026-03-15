@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sonder — Setup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 48px; width: 480px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { color: #888; margin-bottom: 36px; font-size: 15px; line-height: 1.5; }
+  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; margin-top: 20px; }
+  input, select { width: 100%; padding: 10px 14px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; outline: none; }
+  input:focus, select:focus { border-color: #6366f1; }
+  .btn { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 28px; }
+  .btn:hover { background: #5254cc; }
+  .btn-secondary { background: #222; border: 1px solid #333; margin-top: 12px; }
+  .btn-secondary:hover { background: #2a2a2a; }
+  .status { margin-top: 14px; font-size: 13px; color: #888; text-align: center; min-height: 20px; }
+  .status.ok { color: #4ade80; }
+  .status.err { color: #f87171; }
+  .logo { font-size: 36px; margin-bottom: 16px; }
+  .step { display: none; }
+  .step.active { display: block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <!-- Step 1: Welcome -->
+  <div class="step active" id="step-welcome">
+    <div class="logo">🌐</div>
+    <h1>Welcome to Sonder</h1>
+    <p class="subtitle">A self-hosted social simulation engine. Describe any scene and step into a world of AI agents that behave like real people.</p>
+    <button class="btn" onclick="showStep('step-provider')">Get Started</button>
+    <button class="btn btn-secondary" onclick="window.location='/'">Skip (already configured)</button>
+  </div>
+
+  <!-- Step 2: Provider -->
+  <div class="step" id="step-provider">
+    <h1>Choose your AI provider</h1>
+    <p class="subtitle">Sonder works with any provider. Use Ollama for fully local, free operation.</p>
+
+    <label>Provider</label>
+    <select id="provider" onchange="onProviderChange()">
+      <option value="ollama">Ollama (local, free)</option>
+      <option value="anthropic">Anthropic (Claude)</option>
+      <option value="openai">OpenAI (GPT)</option>
+      <option value="groq">Groq (fast, free tier)</option>
+      <option value="custom">Custom / Other</option>
+    </select>
+
+    <label>Model</label>
+    <input id="model" value="ollama/llama3" placeholder="e.g. ollama/llama3" />
+
+    <div id="key-section">
+      <label>API Key <span style="color:#666">(not needed for Ollama)</span></label>
+      <input id="api-key" type="password" placeholder="sk-..." />
+    </div>
+
+    <button class="btn" onclick="testAndSave()">Test Connection & Continue</button>
+    <div class="status" id="test-status"></div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div class="step" id="step-done">
+    <div class="logo">✅</div>
+    <h1>You're all set</h1>
+    <p class="subtitle">Sonder is ready. Describe a scene and step into it.</p>
+    <button class="btn" onclick="window.location='/'">Open Sonder</button>
+  </div>
+</div>
+
+<script>
+const PROVIDER_MODELS = {
+  ollama: "ollama/llama3",
+  anthropic: "anthropic/claude-sonnet-4-5",
+  openai: "openai/gpt-4o",
+  groq: "groq/llama-3.1-70b-versatile",
+  custom: "",
+};
+
+function showStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function onProviderChange() {
+  const p = document.getElementById('provider').value;
+  document.getElementById('model').value = PROVIDER_MODELS[p] || "";
+  document.getElementById('key-section').style.opacity = p === 'ollama' ? '0.4' : '1';
+}
+
+async function testAndSave() {
+  const status = document.getElementById('test-status');
+  status.className = 'status';
+  status.textContent = 'Testing connection…';
+
+  const body = {
+    model: document.getElementById('model').value,
+    api_key: document.getElementById('api-key').value,
+  };
+
+  try {
+    const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (d.ok) {
+      status.className = 'status ok';
+      status.textContent = '✓ Connected successfully';
+      setTimeout(() => showStep('step-done'), 800);
+    } else {
+      throw new Error(d.detail || 'Failed');
+    }
+  } catch (e) {
+    status.className = 'status err';
+    status.textContent = '✗ ' + e.message;
+  }
+}
+
+// Check if setup is actually needed
+fetch('/api/setup/needed').then(r => r.json()).then(d => {
+  if (!d.needed) showStep('step-provider'); // skip welcome if reconfiguring
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+litellm
+pydantic
+pydantic-settings
+pyyaml
+aiofiles
+websockets

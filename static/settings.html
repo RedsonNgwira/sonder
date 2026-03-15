@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sonder — Settings</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 40px; width: 480px; }
+  h1 { font-size: 22px; margin-bottom: 28px; }
+  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; margin-top: 18px; }
+  input, select { width: 100%; padding: 10px 14px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; outline: none; }
+  input:focus, select:focus { border-color: #6366f1; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+  .row label { margin: 0; flex: 1; }
+  .btn { padding: 11px 20px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 24px; width: 100%; }
+  .btn:hover { background: #5254cc; }
+  .back { display: inline-block; margin-bottom: 20px; color: #6366f1; text-decoration: none; font-size: 14px; }
+  .status { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
+  .ok { color: #4ade80; } .err { color: #f87171; }
+</style>
+</head>
+<body>
+<div class="card">
+  <a class="back" href="/">← Back to Sonder</a>
+  <h1>⚙ Settings</h1>
+
+  <label>Model</label>
+  <input id="model" placeholder="e.g. anthropic/claude-sonnet-4-5" />
+
+  <label>API Key</label>
+  <input id="api-key" type="password" placeholder="Leave blank to keep existing" />
+
+  <label>API Base URL <span style="color:#555">(optional, for custom endpoints)</span></label>
+  <input id="api-base" placeholder="https://..." />
+
+  <label>Max Agents</label>
+  <input id="max-agents" type="number" min="2" max="20" />
+
+  <label>Simulation Speed (ms between turns)</label>
+  <input id="tick" type="number" min="500" max="5000" step="100" />
+
+  <div class="row">
+    <label>Web Search (enriches agent creation)</label>
+    <input type="checkbox" id="web-search" style="width:auto" />
+  </div>
+
+  <button class="btn" onclick="save()">Save Settings</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+fetch('/api/config').then(r => r.json()).then(c => {
+  document.getElementById('model').value = c.model || '';
+  document.getElementById('api-base').value = c.api_base || '';
+  document.getElementById('max-agents').value = c.max_agents || 20;
+  document.getElementById('tick').value = c.simulation_tick_ms || 1500;
+  document.getElementById('web-search').checked = c.web_search_enabled || false;
+});
+
+async function save() {
+  const status = document.getElementById('status');
+  const body = {
+    model: document.getElementById('model').value,
+    api_base: document.getElementById('api-base').value,
+    max_agents: parseInt(document.getElementById('max-agents').value),
+    simulation_tick_ms: parseInt(document.getElementById('tick').value),
+    web_search_enabled: document.getElementById('web-search').checked,
+  };
+  const key = document.getElementById('api-key').value;
+  if (key) body.api_key = key;
+
+  try {
+    const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    status.className = 'status ok';
+    status.textContent = '✓ Saved';
+  } catch(e) {
+    status.className = 'status err';
+    status.textContent = '✗ ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
