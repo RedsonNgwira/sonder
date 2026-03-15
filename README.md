@@ -4,6 +4,8 @@
 
 **Created by [Redson Ngwira](https://github.com/RedsonNgwira) · [@RedsonNgwira](https://twitter.com/RedsonNgwira) · Malawi 🇲🇼**
 
+**Run AI social simulations for free, forever. No credit card. No API costs.**
+
 Sonder is a self-hosted social simulation engine. You describe a scene. AI agents with distinct personalities, histories, and grievances spawn inside it and start talking to each other — without you saying a word.
 
 You can watch. You can whisper to someone. You can stay silent and see what happens.
@@ -51,15 +53,27 @@ python main.py      # open http://localhost:8080
 
 For the best experience — fastest responses, free, no credit card — use **Cerebras** or **Groq**. Both return responses in under a second.
 
-| Provider | Cost | Speed | Setup |
-|----------|------|-------|-------|
-| **Cerebras** | Free (1M tokens/day) | ⚡ Fastest | API key — [cloud.cerebras.ai](https://cloud.cerebras.ai) |
-| **Groq** | Free tier | ⚡ Very fast | API key — [console.groq.com](https://console.groq.com/keys) |
-| Qwen | Free | Moderate | OAuth login (no key needed) |
-| Gemini | Free tier | Moderate | API key |
-| OpenRouter | Free models available | Varies | API key |
-| Ollama | Free, local | Depends on hardware | No key, runs on your machine |
-| Anthropic, OpenAI, Mistral, xAI… | Paid | Fast | API key |
+**Free forever**
+
+| Provider | Free allowance | Speed | Setup |
+|----------|---------------|-------|-------|
+| **Cerebras** | 1M tokens/day | ⚡ Fastest available | API key — [cloud.cerebras.ai](https://cloud.cerebras.ai) |
+| **Groq** | ~500K tokens/day | ⚡ Very fast | API key — [console.groq.com](https://console.groq.com/keys) |
+| Gemini Flash | 1M tokens/day | Fast | API key — [aistudio.google.com](https://aistudio.google.com/apikey) |
+| OpenRouter | Free models available | Varies | API key — [openrouter.ai](https://openrouter.ai/keys) |
+| Qwen | Unlimited (OAuth) | Moderate | OAuth login, no key needed |
+| Ollama | Unlimited, local | Depends on hardware | No key — runs on your machine |
+
+**Pay if you want more** — every major provider is supported:
+
+| Provider | Models | Setup |
+|----------|--------|-------|
+| Anthropic | Claude Sonnet, Opus | [console.anthropic.com](https://console.anthropic.com/keys) |
+| OpenAI | GPT-4o, o1 | [platform.openai.com](https://platform.openai.com/api-keys) |
+| Mistral | Mistral Large | [console.mistral.ai](https://console.mistral.ai/api-keys) |
+| xAI | Grok | [console.x.ai](https://console.x.ai) |
+| Together AI | Llama, Mixtral | [api.together.xyz](https://api.together.xyz/settings/api-keys) |
+| Any OpenAI-compatible API | LM Studio, vLLM, etc. | Custom base URL |
 
 ---
 
