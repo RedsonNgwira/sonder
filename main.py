@@ -246,8 +246,11 @@ def root():
 def onboarding():
     return FileResponse(STATIC_DIR / "onboarding.html")
 
-@app.get("/settings")
-def settings_page():
+@app.get("/about")
+def about_page():
+    return FileResponse(STATIC_DIR / "about.html")
+
+
     return FileResponse(STATIC_DIR / "settings.html")
 
 

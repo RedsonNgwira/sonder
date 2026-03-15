@@ -2,6 +2,8 @@
 
 > *sonder* — the realization that each passerby has a life as vivid and complex as your own.
 
+**Created by [Redson Ngwira](https://github.com/RedsonNgwira) · [@RedsonNgwira](https://twitter.com/RedsonNgwira) · Malawi 🇲🇼**
+
 Sonder is a self-hosted social simulation engine. You describe a scene. AI agents with distinct personalities, histories, and grievances spawn inside it and start talking to each other — without you saying a word.
 
 You can watch. You can whisper to someone. You can stay silent and see what happens.
@@ -37,7 +39,7 @@ Nobody is being helpful. Nobody is behaving the same way. They're being human.
 ## Quickstart
 
 ```bash
-git clone https://github.com/yourusername/sonder
+git clone https://github.com/RedsonNgwira/sonder
 cd sonder
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -125,4 +127,4 @@ Worlds are stored as plain `.md` files in `worlds/`. Human-readable, version-con
 
 ## License
 
-MIT
+GPL-3.0 — see [LICENSE](LICENSE). If you build on Sonder, keep the attribution. See [CITATION.md](CITATION.md).

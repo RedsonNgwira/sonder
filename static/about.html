@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — Sonder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d0d0d; color: #e8e8e8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+    .card { max-width: 560px; width: 100%; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .tagline { color: #666; font-size: 14px; margin-bottom: 32px; }
+    .section { margin-bottom: 28px; }
+    .section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 10px; }
+    .origin { font-size: 14px; line-height: 1.7; color: #aaa; }
+    .links { display: flex; flex-direction: column; gap: 8px; }
+    .link-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #1a1a1a; border-radius: 8px; border: 1px solid #222; text-decoration: none; color: #e8e8e8; font-size: 13px; transition: border-color 0.15s; }
+    .link-row:hover { border-color: #6366f1; }
+    .link-icon { font-size: 16px; width: 20px; text-align: center; }
+    .link-label { flex: 1; }
+    .link-sub { font-size: 11px; color: #555; }
+    .meta { font-size: 12px; color: #444; display: flex; gap: 16px; flex-wrap: wrap; }
+    .meta a { color: #555; text-decoration: none; }
+    .meta a:hover { color: #aaa; }
+    .back { display: inline-flex; align-items: center; gap: 6px; color: #555; font-size: 13px; text-decoration: none; margin-bottom: 32px; }
+    .back:hover { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="/" class="back">← Back to Sonder</a>
+
+    <h1>🌐 Sonder</h1>
+    <p class="tagline">Self-hosted social simulation engine</p>
+
+    <div class="section">
+      <h2>Why I built this</h2>
+      <p class="origin">
+        I've always found social situations hard to read — the subtext, the history between people, the unspoken rules of a room. I wanted a way to practice, to understand, to step inside a scene and feel what it's like before facing it in real life.<br><br>
+        Sonder is that tool. You describe a scene. AI agents with real personalities, real grievances, and real relationships spawn inside it and start living. You can watch, participate, or ask the narrator what's really going on beneath the surface.<br><br>
+        It's free, self-hosted, and built to feel alive — not like a toy.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Creator</h2>
+      <div class="links">
+        <a class="link-row" href="https://github.com/RedsonNgwira" target="_blank">
+          <span class="link-icon">🐙</span>
+          <span class="link-label">RedsonNgwira <span class="link-sub">— GitHub</span></span>
+        </a>
+        <a class="link-row" href="https://twitter.com/RedsonNgwira" target="_blank">
+          <span class="link-icon">𝕏</span>
+          <span class="link-label">@RedsonNgwira <span class="link-sub">— Twitter / X</span></span>
+        </a>
+        <a class="link-row" href="https://github.com/RedsonNgwira/sonder" target="_blank">
+          <span class="link-icon">⭐</span>
+          <span class="link-label">RedsonNgwira/sonder <span class="link-sub">— Star on GitHub</span></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Project</h2>
+      <div class="meta">
+        <span>Self-taught engineer from Malawi 🇲🇼</span>
+        <a href="https://github.com/RedsonNgwira/sonder/blob/master/LICENSE" target="_blank">GPL-3.0 License</a>
+        <a href="https://github.com/RedsonNgwira/sonder" target="_blank">Source on GitHub</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
