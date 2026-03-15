@@ -187,6 +187,8 @@ function connectWS(worldId) {
     const data = JSON.parse(e.data);
     if (data.type === 'atmosphere') {
       updateAtmosphere(data);
+    } else if (data.type === 'error') {
+      appendMessage({ speaker: '⚠ error', text: data.message, action: null, timestamp: Date.now()/1000 });
     } else if (data.speaker) {
       appendMessage(data);
       logEvent(`${data.speaker} spoke`);

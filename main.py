@@ -155,8 +155,8 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
     await websocket.accept()
     connections.setdefault(world_id, []).append(websocket)
 
-    # Queue for user messages injected into the autonomous loop
     user_queue: asyncio.Queue = asyncio.Queue()
+    stop = asyncio.Event()
 
     async def broadcast(msg: dict):
         dead = []
@@ -169,44 +169,40 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
             connections[world_id].remove(ws)
 
     async def receive_loop():
-        """Collect user messages into the queue; exit on disconnect."""
         try:
             while True:
                 data = await websocket.receive_text()
                 payload = json.loads(data)
                 if payload.get("text"):
                     user_queue.put_nowait(Message(speaker="You", text=payload["text"]))
-        except (WebSocketDisconnect, Exception):
-            pass
+        except Exception:
+            stop.set()
 
     async def simulation_loop():
-        """Autonomous agent loop — runs continuously regardless of user input."""
-        cfg = get_config()
-        while websocket.client_state.value == 1:  # CONNECTED
+        await asyncio.sleep(1.0)  # let client finish rendering before first turn
+        while not stop.is_set():
             world = load_world(world_id)
             if not world:
                 break
 
-            # Drain any pending user messages (last one wins per tick)
             user_msg = None
             while not user_queue.empty():
                 user_msg = user_queue.get_nowait()
 
             try:
                 await run_turn(world, user_msg, broadcast)
-            except Exception:
-                pass  # don't crash the loop on LLM errors
+            except Exception as e:
+                await broadcast({"type": "error", "message": str(e)})
 
-            # Brief pause between turns so agents don't all talk at once
-            await asyncio.sleep(max(1.0, cfg.simulation_tick_ms / 1000))
+            await asyncio.sleep(max(1.0, get_config().simulation_tick_ms / 1000))
 
-    # Run both concurrently; when receive_loop exits (disconnect), cancel sim
     recv_task = asyncio.create_task(receive_loop())
     sim_task  = asyncio.create_task(simulation_loop())
 
     try:
-        await recv_task  # blocks until disconnect
+        await recv_task
     finally:
+        stop.set()
         sim_task.cancel()
         if websocket in connections.get(world_id, []):
             connections[world_id].remove(websocket)
