@@ -61,6 +61,16 @@
   .send-btn { padding: 10px 20px; background: #6366f1; border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
   .send-btn:hover { background: #5254cc; }
   .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mode-btn { padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #aaa; font-size: 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .mode-btn:hover { background: #222; }
+  .mode-btn.narrator { background: #1a1200; border-color: #a16207; color: #fbbf24; }
+  .input-bar.narrator-mode { border-top-color: #a16207; }
+  .input-bar.narrator-mode input { border-color: #a16207; background: #1a1200; }
+  .input-bar.narrator-mode input:focus { border-color: #fbbf24; }
+  .input-bar.narrator-mode .send-btn { background: #a16207; }
+  .input-bar.narrator-mode .send-btn:hover { background: #854d0e; }
+  .narrator-msg { background: #1a1200; border: 1px solid #a16207; border-radius: 10px; padding: 12px 16px; margin: 8px 0; font-style: italic; color: #fde68a; font-size: 13px; line-height: 1.6; }
+  .narrator-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #a16207; margin-bottom: 6px; font-style: normal; }
 
   /* Right panel — event log */
   .panel-right { width: 220px; border-left: 1px solid #1e1e1e; overflow-y: auto; padding: 16px 12px; flex-shrink: 0; }
@@ -121,10 +131,11 @@
   <div class="panel-center">
     <div class="atmosphere-bar" id="atmosphere-text">Load a world to begin…</div>
     <div class="conversation" id="conversation"></div>
-    <div class="input-bar">
+    <div class="input-bar" id="input-bar">
       <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
         <div class="action-btns" id="action-btns"></div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="mode-btn" id="mode-btn" onclick="toggleNarrator()" title="Switch between speaking and asking the narrator">💬 Speak</button>
           <input id="msg-input" placeholder="Say something to the room…" onkeydown="if(event.key==='Enter') sendMessage()" />
           <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
         </div>
@@ -178,6 +189,34 @@
 let ws = null;
 let currentWorld = null;
 let wsReady = false;
+let narratorMode = false;
+
+function toggleNarrator() {
+  narratorMode = !narratorMode;
+  const btn = document.getElementById('mode-btn');
+  const bar = document.getElementById('input-bar');
+  const input = document.getElementById('msg-input');
+  btn.textContent = narratorMode ? '🎭 Narrator' : '💬 Speak';
+  btn.classList.toggle('narrator', narratorMode);
+  bar.classList.toggle('narrator-mode', narratorMode);
+  input.placeholder = narratorMode
+    ? 'Ask the narrator… (e.g. "what is Steve thinking but not saying")'
+    : 'Say something to the room…';
+  input.focus();
+}
+
+function appendNarratorMessage(question, answer) {
+  const conv = document.getElementById('conversation');
+  const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="narrator-msg">
+      <div class="narrator-label">🎭 Narrator</div>
+      <div style="color:#fbbf24; margin-bottom:6px; font-style:normal; font-size:12px;">You asked: ${question}</div>
+      ${answer}
+    </div>`;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+}
 
 // ── WebSocket ──────────────────────────────────────────────────────────────
 
@@ -209,14 +248,30 @@ function connectWS(worldId) {
 function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!wsReady || !currentWorld) return;
+  if (!text || !currentWorld) return;
   input.value = '';
-  if (text) {
-    // Immediately show user message in UI
-    appendMessage({ speaker: 'You', text, action: null, timestamp: Date.now()/1000 });
-    ws.send(JSON.stringify({ text }));
+
+  if (narratorMode) {
+    appendNarratorMessage(text, '<em>asking…</em>');
+    fetch(`/api/worlds/${currentWorld.id}/narrator`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ question: text }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      // Replace the "asking…" placeholder with the real answer
+      const msgs = document.querySelectorAll('.narrator-msg');
+      const last = msgs[msgs.length - 1];
+      if (last) last.lastChild.textContent = data.answer || data.detail || 'No answer.';
+    })
+    .catch(e => console.error(e));
+    return;
   }
-  // Don't disable send — agents respond async, user can keep typing
+
+  if (!wsReady) return;
+  appendMessage({ speaker: 'You', text, action: null, timestamp: Date.now()/1000 });
+  ws.send(JSON.stringify({ text }));
 }
 
 function triggerAgentTurn() {

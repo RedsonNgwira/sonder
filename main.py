@@ -19,6 +19,7 @@ from db.database import init_db, save_world, load_world, list_worlds, delete_wor
 from db.models import Message
 from simulation.world_builder import build_world
 from simulation.loop import run_turn
+from simulation.narrator import narrate
 
 STATIC_DIR = Path(__file__).parent / "static"
 connections: dict[str, list[WebSocket]] = {}
@@ -151,8 +152,23 @@ async def create_world(body: CreateWorldRequest):
     return world.model_dump()
 
 
-@app.get("/api/worlds/{world_id}")
-def get_world(world_id: str):
+class NarratorRequest(BaseModel):
+    question: str
+
+
+@app.post("/api/worlds/{world_id}/narrator")
+async def narrator(world_id: str, body: NarratorRequest):
+    world = load_world(world_id)
+    if not world:
+        raise HTTPException(404, "World not found")
+    try:
+        answer = await narrate(world, body.question)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"answer": answer}
+
+
+
     world = load_world(world_id)
     if not world:
         raise HTTPException(404, "World not found")
