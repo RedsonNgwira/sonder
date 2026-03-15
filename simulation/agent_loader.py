@@ -31,6 +31,8 @@ def write_agent_md(world_slug: str, agent: Agent, research: str = "") -> Path:
         for r in agent.relationships
     ) or "- None yet"
 
+    research_section = f"## Behavioral Research\n{research}\n" if research and research.strip() else ""
+
     md = f"""# {agent.name}
 
 ## Identity
@@ -42,8 +44,7 @@ def write_agent_md(world_slug: str, agent: Agent, research: str = "") -> Path:
 - Speaking style: {agent.speaking_style or 'natural'}
 - Current grievance: {agent.current_grievance or 'none'}
 
-{research}
-
+{research_section}
 ## Relationships
 {rels}
 

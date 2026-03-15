@@ -1,103 +1,123 @@
 # Sonder
 
-**Self-hosted social simulation engine.** Describe any scene and step into a world of AI agents that behave like real people.
+> *sonder* — the realization that each passerby has a life as vivid and complex as your own.
 
-> *Sonder (n.) — the realization that each passerby has a life as vivid and complex as your own.*
+Sonder is a self-hosted social simulation engine. You describe a scene. AI agents with distinct personalities, histories, and grievances spawn inside it and start talking to each other — without you saying a word.
 
-![Sonder UI](docs/screenshot.png)
-
----
-
-## What it does
-
-You describe a scene in plain language:
-
-> *"A pub after Liverpool lost 3-0. Some Chelsea fans are celebrating nearby."*
-
-Sonder spawns AI agents with distinct personalities, emotional states, and relationships. They talk to each other, react to what you say, ignore you, argue, laugh, go quiet — behaving like real people in that context.
-
-**Use cases:** social anxiety practice, interview prep, creative writing, loneliness, curiosity.
+You can watch. You can whisper to someone. You can stay silent and see what happens.
 
 ---
 
-## Onboarding
+## What it looks like
 
-Two ways to configure Sonder — your choice:
+You type: *"Five coworkers watching football at someone's flat. The team is losing. One of them hasn't been paid in three weeks."*
 
-```bash
-# Option 1: Terminal wizard
-python onboard.py
+Sonder generates five people. Gives each of them a reason to be there, a thing that's eating at them, a way of talking. Then it starts the room.
 
-# Option 2: Web UI — start the server and open the browser
-python main.py
-# → opens http://localhost:8080/onboarding automatically
-```
+Dan starts a passive-aggressive argument about a coaster. Mike explodes about the tactics. Chloe takes a dig and can't help herself. Jess plays peacekeeper, flinching. Steve sits back and watches it all burn.
 
-### Docker (recommended for VPS / 24/7)
-```bash
-docker run -d -p 8080:8080 --restart always ghcr.io/yourusername/sonder
-```
-Then open `http://localhost:8080`
+Nobody is being helpful. Nobody is behaving the same way. They're being human.
 
-### Mac / Linux (one-liner)
-```bash
-curl -fsSL https://sonder.sh/install.sh | sh
-```
+---
 
-### From source
+## Features
+
+- **Autonomous simulation** — agents talk to each other without any input from you
+- **Distinct personalities** — each agent has a background, a grievance, a speaking style, and emotional state that shifts in real time
+- **Behavioral research** — world creation pulls real psychology research (DuckDuckGo) to ground agent behavior
+- **Hot-reload** — edit any agent's `.md` file on disk and changes take effect on the next tick, no restart needed
+- **Whisper system** — send private messages to individual agents mid-scene
+- **Atmosphere tracking** — tension, noise, and warmth evolve as the scene unfolds
+- **Free to run** — works with Qwen OAuth (no API key, free), Groq, Gemini free tier, OpenRouter free models, or any local Ollama model
+
+---
+
+## Quickstart
+
 ```bash
 git clone https://github.com/yourusername/sonder
 cd sonder
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python onboard.py   # pick a provider, authenticate
+python main.py      # open http://localhost:8080
 ```
 
-### Windows
-Use Docker Desktop and run the Docker command above.
+### Providers
+
+| Provider | Cost | Setup |
+|----------|------|-------|
+| Qwen | Free | OAuth login (no key needed) |
+| Groq | Free tier | API key |
+| Gemini | Free tier | API key |
+| OpenRouter | Free models available | API key |
+| Ollama | Free, local | No key, runs on your machine |
+| Anthropic, OpenAI, Mistral, xAI... | Paid | API key |
 
 ---
 
-## Supported providers
+## How agents work
 
-Works with any LLM via [LiteLLM](https://github.com/BerriAI/litellm):
+Each agent lives in a `.md` file at `worlds/{scene}/agents/{name}.md`:
 
-| Provider | Example model |
-|----------|--------------|
-| Ollama (local, free) | `ollama/llama3` |
-| Anthropic | `anthropic/claude-sonnet-4-5` |
-| OpenAI | `openai/gpt-4o` |
-| Groq | `groq/llama-3.1-70b-versatile` |
-| Any OpenAI-compatible | set `api_base` in settings |
+```markdown
+# Mike
 
-Configure your provider in the onboarding wizard on first run, or in Settings.
+## Identity
+- Age: 34
+- Background: Sales manager, hasn't hit quota in two months, blames the product
+
+## Personality
+- Traits: defensive, loud, loyal
+- Speaking style: loud and defensive
+- Current grievance: team is losing and nobody else seems to care
+
+## Behavioral Research
+- (DuckDuckGo snippets about stress displacement, in-group frustration...)
+
+## Relationships
+- Dan: trust=40, hostility=60, affection=30
+
+## Emotional State
+- Anger: 75
+- Sadness: 30
+- Happiness: 15
+- Social willingness: 45
+
+## Behavioral Notes
+<!-- Edit freely. Changes take effect on next simulation tick. -->
+```
+
+Edit any field. Save the file. The simulation picks it up on the next tick.
 
 ---
 
-## VPS deployment (Ubuntu)
+## Architecture
 
-```bash
-# Clone and install
-git clone https://github.com/yourusername/sonder /opt/sonder
-cd /opt/sonder && python3 -m venv venv && venv/bin/pip install -r requirements.txt
-
-# Install as systemd service
-sudo cp sonder.service /etc/systemd/system/
-sudo systemctl enable --now sonder
-
-# Access at http://your-server-ip:8080
+```
+main.py              FastAPI + WebSocket server
+onboard.py           Setup wizard (provider auth, model selection)
+config.py            Config singleton, provider detection
+providers/
+  llm.py             LiteLLM wrapper (all providers)
+  oauth.py           Device-code OAuth with PKCE (Qwen)
+simulation/
+  world_builder.py   Scene → agents (LLM + research)
+  researcher.py      DuckDuckGo → behavioral research summary
+  agent_loader.py    Read/write/hot-reload agent .md files
+  agent.py           AgentRunner — builds prompts, runs turns
+  loop.py            Autonomous simulation loop
+db/models.py         Pydantic models (Agent, World, MoodState)
+static/index.html    Three-panel UI
 ```
 
 ---
 
-## Contributing
+## Self-hosted
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The codebase is intentionally small and readable.
+No cloud. No accounts. No data leaves your machine (unless you use a cloud provider for inference — your choice).
 
-Key files:
-- `simulation/agent.py` — agent personality and response logic
-- `simulation/world_builder.py` — scene parsing and agent spawning
-- `simulation/loop.py` — turn order and simulation tick
-- `providers/llm.py` — LLM abstraction (add new providers here)
+Worlds are stored as plain `.md` files in `worlds/`. Human-readable, version-controllable, editable in any text editor.
 
 ---
 
