@@ -43,22 +43,26 @@
 
     <label>Provider</label>
     <select id="provider" onchange="onProviderChange()">
+      <option value="openrouter">OpenRouter (free models available)</option>
       <option value="ollama">Ollama (local, free)</option>
       <option value="anthropic">Anthropic (Claude)</option>
       <option value="openai">OpenAI (GPT)</option>
       <option value="groq">Groq (fast, free tier)</option>
-      <option value="custom">Custom / Other</option>
+      <option value="gemini">Google Gemini</option>
+      <option value="mistral">Mistral</option>
+      <option value="custom">Custom / OpenAI-compatible</option>
     </select>
 
     <label>Model</label>
-    <input id="model" value="ollama/llama3" placeholder="e.g. ollama/llama3" />
+    <input id="model" value="openrouter/qwen/qwen-2.5-72b-instruct" placeholder="provider/model-id" />
 
     <div id="key-section">
-      <label>API Key <span style="color:#666">(not needed for Ollama)</span></label>
-      <input id="api-key" type="password" placeholder="sk-..." />
+      <label>API Key</label>
+      <a id="key-link" href="https://openrouter.ai/keys" target="_blank" style="font-size:12px;color:#6366f1;display:block;margin-bottom:6px;">Get OpenRouter API key →</a>
+      <input id="api-key" type="password" placeholder="Paste API key…" />
     </div>
 
-    <button class="btn" onclick="testAndSave()">Test Connection & Continue</button>
+    <button class="btn" onclick="saveProvider()">Save & Continue</button>
     <div class="status" id="test-status"></div>
   </div>
 
@@ -72,12 +76,15 @@
 </div>
 
 <script>
-const PROVIDER_MODELS = {
-  ollama: "ollama/llama3",
-  anthropic: "anthropic/claude-sonnet-4-5",
-  openai: "openai/gpt-4o",
-  groq: "groq/llama-3.1-70b-versatile",
-  custom: "",
+const PROVIDERS = {
+  openrouter: { model: "openrouter/qwen/qwen-2.5-72b-instruct", keyUrl: "https://openrouter.ai/keys", note: "Free models available" },
+  anthropic:  { model: "anthropic/claude-sonnet-4-5",           keyUrl: "https://console.anthropic.com/keys", note: "" },
+  openai:     { model: "openai/gpt-4o",                         keyUrl: "https://platform.openai.com/api-keys", note: "" },
+  groq:       { model: "groq/llama-3.1-70b-versatile",          keyUrl: "https://console.groq.com/keys", note: "Fast, free tier" },
+  gemini:     { model: "gemini/gemini-2.0-flash",               keyUrl: "https://aistudio.google.com/apikey", note: "Free tier" },
+  mistral:    { model: "mistral/mistral-large-latest",          keyUrl: "https://console.mistral.ai/api-keys", note: "" },
+  ollama:     { model: "ollama/llama3.3",                       keyUrl: null, note: "Local, no API key needed" },
+  custom:     { model: "",                                       keyUrl: null, note: "Any OpenAI-compatible endpoint" },
 };
 
 function showStep(id) {
@@ -87,39 +94,48 @@ function showStep(id) {
 
 function onProviderChange() {
   const p = document.getElementById('provider').value;
-  document.getElementById('model').value = PROVIDER_MODELS[p] || "";
-  document.getElementById('key-section').style.opacity = p === 'ollama' ? '0.4' : '1';
+  const info = PROVIDERS[p];
+  document.getElementById('model').value = info.model;
+  const noKey = p === 'ollama';
+  document.getElementById('key-section').style.opacity = noKey ? '0.4' : '1';
+  const link = document.getElementById('key-link');
+  if (info.keyUrl) {
+    link.href = info.keyUrl;
+    link.textContent = `Get ${p} API key →`;
+    link.style.display = 'block';
+  } else {
+    link.style.display = 'none';
+  }
 }
 
-async function testAndSave() {
+async function saveProvider() {
   const status = document.getElementById('test-status');
   status.className = 'status';
-  status.textContent = 'Testing connection…';
+  status.textContent = 'Saving…';
 
-  const body = {
-    model: document.getElementById('model').value,
-    api_key: document.getElementById('api-key').value,
-  };
+  const provider = document.getElementById('provider').value;
+  const model = document.getElementById('model').value;
+  const key = document.getElementById('api-key').value;
+
+  const body = { model };
+  if (key && provider !== 'ollama') body.keys = { [provider]: key };
 
   try {
     const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const d = await r.json();
     if (d.ok) {
       status.className = 'status ok';
-      status.textContent = '✓ Connected successfully';
-      setTimeout(() => showStep('step-done'), 800);
-    } else {
-      throw new Error(d.detail || 'Failed');
-    }
+      status.textContent = '✓ Saved';
+      setTimeout(() => showStep('step-done'), 600);
+    } else throw new Error(d.detail || 'Failed');
   } catch (e) {
     status.className = 'status err';
     status.textContent = '✗ ' + e.message;
   }
 }
 
-// Check if setup is actually needed
 fetch('/api/setup/needed').then(r => r.json()).then(d => {
-  if (!d.needed) showStep('step-provider'); // skip welcome if reconfiguring
+  if (!d.needed) showStep('step-provider');
 });
 </script>
 </body>

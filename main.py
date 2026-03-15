@@ -55,15 +55,28 @@ def get_config():
 
 @app.get("/api/setup/needed")
 def setup_needed():
-    """Returns true if this is a first run (no API key configured and not using Ollama)."""
-    needs_setup = not config.api_key and not config.model.startswith("ollama")
-    return {"needed": needs_setup}
+    return {"needed": not config.is_setup()}
+
+
+@app.get("/api/providers")
+def get_providers():
+    """Return list of built-in providers and their auth status."""
+    from config import BUILTIN_PROVIDERS
+    import os
+    result = []
+    for provider, env_var in BUILTIN_PROVIDERS.items():
+        has_key = (
+            bool(config.keys.get(provider))
+            or (env_var and bool(os.environ.get(env_var)))
+            or provider == "ollama"
+        )
+        result.append({"id": provider, "env_var": env_var, "configured": has_key})
+    return result
 
 
 class ConfigUpdate(BaseModel):
     model: str | None = None
-    api_key: str | None = None
-    api_base: str | None = None
+    keys: dict | None = None
     max_agents: int | None = None
     simulation_tick_ms: int | None = None
     web_search_enabled: bool | None = None

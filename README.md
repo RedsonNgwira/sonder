@@ -20,7 +20,18 @@ Sonder spawns AI agents with distinct personalities, emotional states, and relat
 
 ---
 
-## Install
+## Onboarding
+
+Two ways to configure Sonder — your choice:
+
+```bash
+# Option 1: Terminal wizard
+python onboard.py
+
+# Option 2: Web UI — start the server and open the browser
+python main.py
+# → opens http://localhost:8080/onboarding automatically
+```
 
 ### Docker (recommended for VPS / 24/7)
 ```bash

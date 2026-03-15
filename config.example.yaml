@@ -1,28 +1,43 @@
 # Sonder Configuration
-# Copy this to config.yaml and fill in your values
+# Run 'sonder onboard' (CLI) or open http://localhost:8080/onboarding (web) to configure.
 
-# LLM Provider (via LiteLLM)
-# Examples:
-#   anthropic/claude-sonnet-4-5
-#   openai/gpt-4o
-#   groq/llama-3.1-70b-versatile
-#   ollama/llama3  (local, no API key needed)
-model: ollama/qwen2.5:0.5b
+# Active model — format: provider/model-id
+# Built-in providers (just set the key below or as env var):
+#   openai/gpt-4o                    → OPENAI_API_KEY
+#   anthropic/claude-sonnet-4-5      → ANTHROPIC_API_KEY
+#   openrouter/qwen/qwen-2.5-72b-instruct  → OPENROUTER_API_KEY (many free models)
+#   groq/llama-3.1-70b-versatile     → GROQ_API_KEY
+#   mistral/mistral-large-latest     → MISTRAL_API_KEY
+#   gemini/gemini-2.0-flash          → GEMINI_API_KEY
+#   ollama/llama3.3                  → no key needed (local)
+model: ollama/llama3.3
 
-# API key for your chosen provider (not needed for Ollama)
-api_key: ""
+# Provider API keys (can also be set as environment variables)
+keys:
+  openai: ""           # or env: OPENAI_API_KEY
+  anthropic: ""        # or env: ANTHROPIC_API_KEY
+  openrouter: ""       # or env: OPENROUTER_API_KEY
+  groq: ""             # or env: GROQ_API_KEY
+  mistral: ""          # or env: MISTRAL_API_KEY
+  gemini: ""           # or env: GEMINI_API_KEY
 
-# Optional: custom base URL (e.g. for self-hosted Ollama on another machine)
-api_base: ""
+# Custom providers (OpenAI-compatible endpoints, e.g. LM Studio, vLLM, local proxies)
+# custom_providers:
+#   lmstudio:
+#     base_url: "http://localhost:1234/v1"
+#     api_key: ""
+#     models:
+#       - id: "my-model"
+#         name: "My Local Model"
 
 # Simulation settings
 max_agents: 20
-simulation_tick_ms: 1500   # delay between agent turns in milliseconds
+simulation_tick_ms: 1500
 
-# Server settings
+# Server
 host: "0.0.0.0"
 port: 8080
-open_browser: true         # auto-open browser on first run
+open_browser: true
 
-# Web search (optional, enriches agent behavior at world creation)
+# Optional web search to ground agent behavior at world creation
 web_search_enabled: false
