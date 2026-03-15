@@ -29,6 +29,7 @@ Nobody is being helpful. Nobody is behaving the same way. They're being human.
 - **Whisper system** — send private messages to individual agents mid-scene
 - **Atmosphere tracking** — tension, noise, and warmth evolve as the scene unfolds
 - **Free to run** — works with Qwen OAuth (no API key, free), Groq, Gemini free tier, OpenRouter free models, or any local Ollama model
+- **Voice** — click 🔊 on any message to hear it read aloud via browser TTS (free, no setup). Realistic voice plugins (ElevenLabs, Coqui, Piper) documented in [`plugins/PLUGINS.md`](plugins/PLUGINS.md)
 
 ---
 

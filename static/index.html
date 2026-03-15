@@ -44,7 +44,9 @@
   .conversation { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
   .message { max-width: 80%; }
   .message.you { align-self: flex-end; }
-  .msg-speaker { font-size: 11px; color: #666; margin-bottom: 3px; }
+  .msg-speaker { font-size: 11px; color: #666; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  .speak-btn { background: none; border: none; cursor: pointer; font-size: 11px; opacity: 0.4; padding: 0; line-height: 1; }
+  .speak-btn:hover { opacity: 1; }
   .msg-action { font-size: 13px; color: #888; font-style: italic; margin-bottom: 2px; }
   .msg-text { font-size: 14px; line-height: 1.5; background: #1a1a1a; padding: 10px 14px; border-radius: 10px; border: 1px solid #2a2a2a; }
   .message.you .msg-text { background: #1e1b4b; border-color: #3730a3; }
@@ -225,12 +227,24 @@ function setSending(v) {
   document.getElementById('send-btn').disabled = v;
 }
 
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+
 function appendMessage(msg) {
   const conv = document.getElementById('conversation');
   const div = document.createElement('div');
   div.className = 'message' + (msg.speaker === 'You' ? ' you' : '');
+  const speakable = [msg.action, msg.text].filter(Boolean).join(' ');
   div.innerHTML = `
-    <div class="msg-speaker">${msg.speaker}</div>
+    <div class="msg-speaker">
+      ${msg.speaker}
+      ${speakable ? `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(speakable)})">🔊</button>` : ''}
+    </div>
     ${msg.action ? `<div class="msg-action">*${msg.action}*</div>` : ''}
     ${msg.text ? `<div class="msg-text">${msg.text}</div>` : ''}
   `;
