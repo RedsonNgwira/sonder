@@ -9,6 +9,7 @@ import webbrowser
 
 PROVIDERS = [
     # (id, display_name, env_var, key_url, default_model, note)
+    ("qwen-portal", "Qwen",                     None,                     None,                                         "qwen-portal/coder-model",               "Free OAuth login"),
     ("openrouter",  "OpenRouter",               "OPENROUTER_API_KEY",     "https://openrouter.ai/keys",                 "openrouter/qwen/qwen-2.5-72b-instruct", "Many free models"),
     ("groq",        "Groq",                     "GROQ_API_KEY",           "https://console.groq.com/keys",              "groq/llama-3.1-70b-versatile",          "Fast, free tier"),
     ("gemini",      "Google Gemini",             "GEMINI_API_KEY",         "https://aistudio.google.com/apikey",         "gemini/gemini-2.0-flash",               "Free tier"),
@@ -195,7 +196,30 @@ def run():
     api_key, model, base_url = "", default_model, ""
 
     # ── Step 2: auth ──────────────────────────────────────────────────────────
-    if provider_id == "ollama":
+    from providers.oauth import OAUTH_PROVIDERS, get_access_token, login as oauth_login
+
+    if provider_id in OAUTH_PROVIDERS:
+        existing = get_access_token(provider_id)
+        if existing:
+            print(f"  {green('✓')} Already logged in to {provider_name}.")
+            reauth = input("  Re-authenticate? [y/N]: ").strip().lower()
+            if reauth != "y":
+                model = default_model
+                # skip to save
+                from config import save_config
+                save_config({"model": model})
+                print(f"\n  {green('✓')} Saved. Model: {cyan(model)}")
+                print(f"\n  Start: {cyan('python main.py')}\n")
+                return
+        print(f"\n  Starting {provider_name} OAuth…")
+        import asyncio
+        ok = asyncio.run(oauth_login(provider_id))
+        if not ok:
+            print(red("  OAuth failed. Exiting."))
+            sys.exit(1)
+        model = default_model
+
+    elif provider_id == "ollama":
         print(f"  {green('✓')} No API key needed.")
         print(f"  Make sure Ollama is running: {cyan('ollama serve')}")
 
@@ -218,7 +242,6 @@ def run():
             sys.exit(1)
         print(f"  Key: {dim(masked(api_key))}")
 
-        # Validate
         print("  Validating key…", end="", flush=True)
         if validate_key(provider_id, api_key):
             print(f" {green('✓')}")
@@ -226,17 +249,18 @@ def run():
             print(f" {yellow('⚠ could not verify (continuing anyway)')}")
 
     # ── Step 3: model picker ──────────────────────────────────────────────────
-    print(f"\n  Fetching models…", end="", flush=True)
-    models = fetch_models(provider_id, api_key)
+    if provider_id not in OAUTH_PROVIDERS:
+        print(f"\n  Fetching models…", end="", flush=True)
+        models = fetch_models(provider_id, api_key)
 
-    if models:
-        print(f" {green(str(len(models)) + ' found')}")
-        picked = pick(f"  Select model  (type to search)", models, searchable=True)
-        model = picked if picked else default_model
-    else:
-        print(f" {dim('(offline — enter manually)')}")
-        inp = input(f"  Model [{default_model}]: ").strip()
-        model = inp or default_model
+        if models:
+            print(f" {green(str(len(models)) + ' found')}")
+            picked = pick(f"  Select model  (type to search)", models, searchable=True)
+            model = picked if picked else default_model
+        else:
+            print(f" {dim('(offline — enter manually)')}")
+            inp = input(f"  Model [{default_model}]: ").strip()
+            model = inp or default_model
 
     # ── Step 4: save ──────────────────────────────────────────────────────────
     updates: dict = {"model": model}

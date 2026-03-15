@@ -333,16 +333,21 @@ async function createWorld() {
   status.textContent = 'Building world…';
 
   try {
-    const world = await fetch('/api/worlds', {
+    const resp = await fetch('/api/worlds', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ prompt, agent_count: parseInt(count) })
-    }).then(r => r.json());
-
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({detail: resp.statusText}));
+      throw new Error(err.detail || resp.statusText);
+    }
+    const world = await resp.json();
     hideWorldModal();
     loadWorld(world.id, world);
   } catch(e) {
-    status.textContent = 'Error: ' + e.message;
+    status.textContent = '✗ ' + e.message;
+    status.style.color = '#f87171';
   } finally {
     btn.disabled = false;
   }

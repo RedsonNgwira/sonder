@@ -135,7 +135,18 @@ class CreateWorldRequest(BaseModel):
 async def create_world(body: CreateWorldRequest):
     cfg = get_config()
     agent_count = max(2, min(body.agent_count, cfg.max_agents))
-    world = await build_world(body.prompt, agent_count)
+    try:
+        world = await build_world(body.prompt, agent_count)
+    except Exception as e:
+        msg = str(e)
+        # Surface provider errors clearly
+        if "402" in msg or "credits" in msg.lower():
+            raise HTTPException(402, "Provider has no credits. Pick a free model or add credits.")
+        if "401" in msg or "invalid" in msg.lower():
+            raise HTTPException(401, "Invalid API key. Run `python onboard.py` to reconfigure.")
+        if "OAuth" in msg or "token" in msg.lower():
+            raise HTTPException(401, msg)
+        raise HTTPException(500, msg)
     save_world(world)
     return world.model_dump()
 

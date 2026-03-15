@@ -67,6 +67,10 @@ class SonderConfig(BaseModel):
         provider = self.get_provider()
         if provider == "ollama":
             return True
+        # OAuth providers: check token file
+        from providers.oauth import OAUTH_PROVIDERS, get_access_token
+        if provider in OAUTH_PROVIDERS:
+            return bool(get_access_token(provider))
         return bool(self.get_api_key())
 
 
