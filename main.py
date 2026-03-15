@@ -180,7 +180,12 @@ async def narrator_endpoint(world_id: str, body: NarratorRequest):
     try:
         answer = await narrate(world, body.question)
     except Exception as e:
-        raise HTTPException(500, str(e))
+        msg = str(e)
+        if "RateLimit" in msg or "quota" in msg.lower() or "429" in msg:
+            msg = "Rate limit reached — your free quota is exhausted. Wait a moment or switch providers with `python onboard.py`."
+        elif "401" in msg or "invalid" in msg.lower():
+            msg = "Auth error — run `python onboard.py` to re-authenticate."
+        raise HTTPException(500, msg)
     return {"answer": answer}
 
 
@@ -236,7 +241,10 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
             try:
                 await run_turn(world, user_msg, broadcast)
             except Exception as e:
-                await broadcast({"type": "error", "message": str(e)})
+                msg = str(e)
+                if "RateLimit" in msg or "quota" in msg.lower() or "429" in msg:
+                    msg = "Rate limit reached — free quota exhausted. Wait a moment or run `python onboard.py` to switch providers."
+                await broadcast({"type": "error", "message": msg})
 
             await asyncio.sleep(max(1.0, get_config().simulation_tick_ms / 1000))
 
