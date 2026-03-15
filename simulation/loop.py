@@ -1,7 +1,7 @@
 """
-simulation/loop.py — The simulation loop.
-Decides which agents speak each turn, runs their LLM calls in parallel,
-and broadcasts results via a callback.
+simulation/loop.py — Simulation turn runner.
+Agents speak in weighted order (angrier = more likely to speak).
+The world keeps running even when the user is silent.
 """
 from __future__ import annotations
 import asyncio
@@ -9,47 +9,47 @@ import random
 from db.models import World, Message
 from db.database import save_world
 from simulation.agent import AgentRunner
-from config import config
+from config import get_config
 
 
-def _pick_speakers(world: World, max_speakers: int = 3) -> list:
+def _pick_speakers(world: World) -> list:
     """
-    Weight agents by emotional intensity — angrier/sadder agents speak more.
-    Returns a subset of agents who will act this turn.
+    Weight by emotional intensity. Angrier/sadder agents speak more.
+    Always pick 1-3 agents per turn.
     """
-    def weight(agent):
-        m = agent.mood
-        intensity = (m.anger + m.sadness + (100 - m.social_willingness)) / 3
-        return max(1, intensity)
+    def weight(a):
+        return max(1, (a.mood.anger + a.mood.sadness + (100 - a.mood.social_willingness)) / 3)
 
+    k = random.randint(1, min(3, len(world.agents)))
     weights = [weight(a) for a in world.agents]
-    k = min(max_speakers, len(world.agents))
-    return random.choices(world.agents, weights=weights, k=k)
+    # random.choices allows repeats — deduplicate by id
+    seen, picked = set(), []
+    for a in random.choices(world.agents, weights=weights, k=k * 3):
+        if a.id not in seen:
+            seen.add(a.id)
+            picked.append(a)
+        if len(picked) == k:
+            break
+    return picked
 
 
 async def run_turn(
     world: World,
     user_message: Message | None,
-    broadcast,  # async callable(message: dict)
+    broadcast,
 ) -> World:
-    """
-    Run one simulation turn:
-    1. Add user message to conversation (if any)
-    2. Pick which agents respond
-    3. Run their LLM calls in parallel
-    4. Update mood, save world, broadcast each message
-    """
+    cfg = get_config()
+
     if user_message:
         world.conversation.append(user_message)
         await broadcast(user_message.model_dump())
 
     speakers = _pick_speakers(world)
-    runners = [AgentRunner(agent, world.scene_description) for agent in speakers]
+    runners = [AgentRunner(a, world.scene_description) for a in speakers]
 
-    # All selected agents think in parallel
     responses = await asyncio.gather(
         *[r.respond(world.conversation) for r in runners],
-        return_exceptions=True
+        return_exceptions=True,
     )
 
     for runner, response in zip(runners, responses):
@@ -58,18 +58,29 @@ async def run_turn(
 
         world.conversation.append(response)
 
-        # Update this agent's mood based on what was just said
-        runner.update_mood(response)
+        # Every agent updates mood/relationships in response to this message
+        for a_runner in [AgentRunner(a, world.scene_description) for a in world.agents]:
+            a_runner.update_mood(response, world.agents)
 
         await broadcast(response.model_dump())
-        await asyncio.sleep(config.simulation_tick_ms / 1000)
+        await asyncio.sleep(cfg.simulation_tick_ms / 1000)
 
-    # Update atmosphere meters based on average mood
+    # Recompute atmosphere from agent moods
     if world.agents:
-        avg_anger = sum(a.mood.anger for a in world.agents) / len(world.agents)
-        avg_happiness = sum(a.mood.happiness for a in world.agents) / len(world.agents)
-        world.tension = int(avg_anger * 0.8)
-        world.warmth = int(avg_happiness * 0.7)
+        n = len(world.agents)
+        world.tension = int(sum(a.mood.anger for a in world.agents) / n * 0.9)
+        world.warmth  = int(sum(a.mood.happiness for a in world.agents) / n * 0.7)
+        world.noise   = int(sum(
+            100 - a.mood.social_willingness for a in world.agents
+        ) / n * 0.6)
+
+    await broadcast({
+        "type": "atmosphere",
+        "tension": world.tension,
+        "noise": world.noise,
+        "warmth": world.warmth,
+        "agents": [{"name": a.name, "mood": a.mood.model_dump()} for a in world.agents],
+    })
 
     save_world(world)
     return world

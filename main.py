@@ -1,38 +1,35 @@
 """
-main.py — Sonder FastAPI application entry point.
-Serves the web UI and exposes the simulation API + WebSocket.
+main.py — Sonder FastAPI application.
 """
 import asyncio
 import json
+import os
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import config as _cfg
-from config import save_config, load_config
+from config import get_config, save_config, BUILTIN_PROVIDERS
 from db.database import init_db, save_world, load_world, list_worlds, delete_world
-from db.models import Message, World
+from db.models import Message
 from simulation.world_builder import build_world
 from simulation.loop import run_turn
 
 STATIC_DIR = Path(__file__).parent / "static"
-
-# Active WebSocket connections per world_id
 connections: dict[str, list[WebSocket]] = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    if _cfg.config.open_browser:
-        asyncio.get_event_loop().call_later(
-            1.0, webbrowser.open, f"http://localhost:{_cfg.config.port}"
-        )
+    cfg = get_config()
+    if cfg.open_browser:
+        asyncio.get_event_loop().call_later(1.0, webbrowser.open, f"http://localhost:{cfg.port}")
     yield
 
 
@@ -47,26 +44,26 @@ def health():
     return {"status": "ok"}
 
 
-# ── Config / Onboarding ───────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/config")
-def get_config():
-    return _cfg.config.model_dump(exclude={"api_key"})
+def api_get_config():
+    cfg = get_config()
+    return {k: v for k, v in cfg.model_dump().items() if k != "keys"}
 
 
 @app.get("/api/setup/needed")
 def setup_needed():
-    return {"needed": not _cfg.config.is_setup()}
+    return {"needed": not get_config().is_setup()}
 
 
 @app.get("/api/providers")
 def get_providers():
-    from config import BUILTIN_PROVIDERS
-    import os
+    cfg = get_config()
     result = []
     for provider, env_var in BUILTIN_PROVIDERS.items():
         has_key = (
-            bool(_cfg.config.keys.get(provider))
+            bool(cfg.keys.get(provider))
             or (env_var and bool(os.environ.get(env_var)))
             or provider == "ollama"
         )
@@ -83,52 +80,35 @@ class ConfigUpdate(BaseModel):
 
 
 @app.post("/api/config")
-def update_config(body: ConfigUpdate):
+def api_update_config(body: ConfigUpdate):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    _cfg.config = save_config(updates)
-    return {"ok": True, "model": _cfg.config.model}
+    cfg = save_config(updates)
+    return {"ok": True, "model": cfg.model}
 
 
 @app.get("/api/models")
-async def get_models(provider: str = "openrouter"):
-    """Fetch live model list from provider API."""
-    import httpx
-    from config import BUILTIN_PROVIDERS
-
-    key = _cfg.config.keys.get(provider) or ""
+async def api_get_models(provider: str = "openrouter"):
+    cfg = get_config()
+    key = cfg.keys.get(provider, "")
+    auth = {"Authorization": f"Bearer {key}"} if key else {}
 
     try:
-        if provider == "openrouter":
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get("https://openrouter.ai/api/v1/models",
-                                     headers={"Authorization": f"Bearer {key}"} if key else {})
-            models = [f"openrouter/{m['id']}" for m in r.json().get("data", [])]
-
-        elif provider == "groq":
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get("https://api.groq.com/openai/v1/models",
-                                     headers={"Authorization": f"Bearer {key}"})
-            models = [f"groq/{m['id']}" for m in r.json().get("data", [])]
-
-        elif provider == "ollama":
-            async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=12) as client:
+            if provider == "openrouter":
+                r = await client.get("https://openrouter.ai/api/v1/models", headers=auth)
+                models = [f"openrouter/{m['id']}" for m in r.json().get("data", [])]
+            elif provider == "groq":
+                r = await client.get("https://api.groq.com/openai/v1/models", headers=auth)
+                models = [f"groq/{m['id']}" for m in r.json().get("data", [])]
+            elif provider == "openai":
+                r = await client.get("https://api.openai.com/v1/models", headers=auth)
+                models = sorted([f"openai/{m['id']}" for m in r.json().get("data", []) if "gpt" in m["id"]])
+            elif provider == "ollama":
                 r = await client.get("http://localhost:11434/api/tags")
-            models = [f"ollama/{m['name']}" for m in r.json().get("models", [])]
-
-        elif provider == "openai":
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.get("https://api.openai.com/v1/models",
-                                     headers={"Authorization": f"Bearer {key}"})
-            models = sorted(
-                [f"openai/{m['id']}" for m in r.json().get("data", [])
-                 if "gpt" in m["id"]],
-            )
-
-        else:
-            models = []
-
+                models = [f"ollama/{m['name']}" for m in r.json().get("models", [])]
+            else:
+                models = []
         return {"models": models}
-
     except Exception as e:
         return {"models": [], "error": str(e)}
 
@@ -153,7 +133,8 @@ class CreateWorldRequest(BaseModel):
 
 @app.post("/api/worlds")
 async def create_world(body: CreateWorldRequest):
-    agent_count = max(2, min(body.agent_count, _cfg.config.max_agents))
+    cfg = get_config()
+    agent_count = max(2, min(body.agent_count, cfg.max_agents))
     world = await build_world(body.prompt, agent_count)
     save_world(world)
     return world.model_dump()
@@ -167,18 +148,18 @@ def get_world(world_id: str):
     return world.model_dump()
 
 
-# ── WebSocket — real-time simulation ─────────────────────────────────────────
+# ── WebSocket ─────────────────────────────────────────────────────────────────
 
 @app.websocket("/ws/{world_id}")
 async def simulation_ws(websocket: WebSocket, world_id: str):
     await websocket.accept()
     connections.setdefault(world_id, []).append(websocket)
 
-    async def broadcast(message: dict):
+    async def broadcast(msg: dict):
         dead = []
         for ws in connections.get(world_id, []):
             try:
-                await ws.send_text(json.dumps(message))
+                await ws.send_text(json.dumps(msg))
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -188,51 +169,33 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
         while True:
             data = await websocket.receive_text()
             payload = json.loads(data)
-
             world = load_world(world_id)
             if not world:
                 await websocket.send_text(json.dumps({"error": "World not found"}))
                 continue
-
-            user_msg = None
-            if payload.get("text"):
-                user_msg = Message(speaker="You", text=payload["text"])
-
+            user_msg = Message(speaker="You", text=payload["text"]) if payload.get("text") else None
             await run_turn(world, user_msg, broadcast)
-
-            # Send updated atmosphere after each turn
-            await broadcast({
-                "type": "atmosphere",
-                "tension": world.tension,
-                "noise": world.noise,
-                "warmth": world.warmth,
-                "agents": [
-                    {"name": a.name, "mood": a.mood.model_dump()}
-                    for a in world.agents
-                ],
-            })
-
     except WebSocketDisconnect:
-        connections[world_id].remove(websocket)
+        if websocket in connections.get(world_id, []):
+            connections[world_id].remove(websocket)
 
 
-# ── Frontend routes ───────────────────────────────────────────────────────────
+# ── Static routes ─────────────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
     return FileResponse(STATIC_DIR / "index.html")
 
-
 @app.get("/onboarding")
 def onboarding():
     return FileResponse(STATIC_DIR / "onboarding.html")
 
-
 @app.get("/settings")
-def settings():
+def settings_page():
     return FileResponse(STATIC_DIR / "settings.html")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=_cfg.config.host, port=_cfg.config.port, reload=False)
+    cfg = get_config()
+    uvicorn.run("main:app", host=cfg.host, port=cfg.port, reload=False)
