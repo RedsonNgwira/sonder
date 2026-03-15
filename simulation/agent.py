@@ -65,7 +65,7 @@ class AgentRunner:
             for m in conversation_history[-20:]  # last 20 messages as context
         ]
 
-        raw = await chat(self._build_system_prompt(), messages)
+        raw = await chat(self._build_system_prompt(), messages, max_tokens=300)
 
         if "[silent]" in raw.lower():
             return None

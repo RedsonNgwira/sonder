@@ -6,7 +6,7 @@ from litellm import acompletion
 from config import config
 
 
-async def chat(system_prompt: str, messages: list[dict], temperature: float = 0.9) -> str:
+async def chat(system_prompt: str, messages: list[dict], temperature: float = 0.9, max_tokens: int = 4096) -> str:
     """Single LLM call. Returns the text response."""
     full_messages = [{"role": "system", "content": system_prompt}] + messages
 
@@ -14,7 +14,7 @@ async def chat(system_prompt: str, messages: list[dict], temperature: float = 0.
         "model": config.model,
         "messages": full_messages,
         "temperature": temperature,
-        "max_tokens": 200,
+        "max_tokens": max_tokens,
     }
 
     api_key = config.get_api_key()
