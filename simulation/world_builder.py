@@ -1,89 +1,88 @@
 """
-simulation/world_builder.py — Parses a natural language scene prompt and
-generates a full World with agents using an LLM call.
+simulation/world_builder.py — Build a World from a natural language scene prompt.
+Uses rich behavioral archetypes so agents feel like real people, not NPCs.
 """
 import json
 from db.models import World, Agent, MoodState, RelationshipEntry
 from providers.llm import chat
 
+BUILDER_PROMPT = """You are a social simulation engine. Your job is to populate a scene with psychologically realistic people.
 
-BUILDER_PROMPT = """You are a world-building engine for a social simulation.
+Scene: {prompt}
 
-Given a scene description, generate a JSON object with this exact structure:
-{
-  "name": "short scene name",
-  "location": "specific location",
-  "atmosphere": "one sentence describing the mood of the place",
-  "scene_description": "2-3 sentence vivid description",
-  "tension": 40,
-  "noise": 50,
-  "warmth": 40,
+Generate exactly {agent_count} people for this scene. Each person must:
+- Have a specific reason to be in this scene right now
+- Have a concrete emotional state driven by recent events in their life
+- Have pre-existing opinions about at least one other person in the scene
+- Have a dominant personality flaw (jealousy, pride, anxiety, bitterness, impulsiveness, etc.)
+
+Return ONLY this JSON, no explanation:
+{{
+  "name": "short evocative scene name",
+  "location": "specific place",
+  "atmosphere": "one vivid sentence — what it feels like to walk in",
+  "scene_description": "2-3 sentences. What is happening. What is the tension.",
+  "tension": <0-100>,
+  "noise": <0-100>,
+  "warmth": <0-100>,
   "agents": [
-    {
+    {{
       "name": "First name only",
-      "age": 30,
-      "background": "one sentence backstory relevant to this scene",
-      "personality_traits": ["trait1", "trait2", "trait3"],
-      "mood": {
-        "anger": 20,
-        "sadness": 20,
-        "happiness": 60,
-        "social_willingness": 70
-      }
-    }
+      "age": <number>,
+      "background": "One sentence: who they are AND why they're here AND what's eating at them right now",
+      "personality_traits": ["dominant flaw", "secondary trait", "one redeeming quality"],
+      "speaking_style": "how they talk — e.g. 'clipped and sarcastic', 'loud and defensive', 'quiet but cutting'",
+      "current_grievance": "what is bothering them most right now, in one sentence",
+      "mood": {{
+        "anger": <0-100>,
+        "sadness": <0-100>,
+        "happiness": <0-100>,
+        "social_willingness": <0-100>
+      }}
+    }}
   ]
-}
-
-Rules:
-- Generate exactly {agent_count} agents
-- Each agent must feel like a distinct real person, not a stereotype
-- Mood values must reflect the scene context (e.g. after a loss, anger/sadness should be high for fans)
-- tension, noise, warmth are 0-100 atmosphere meters
-- Return ONLY valid JSON, no explanation
-"""
+}}"""
 
 
 async def build_world(prompt: str, agent_count: int) -> World:
-    """Turn a natural language scene prompt into a full World object."""
-    system = BUILDER_PROMPT.replace("{agent_count}", str(agent_count))
-    messages = [{"role": "user", "content": f"Scene: {prompt}"}]
+    system = "You are a world-building engine. Return only valid JSON."
+    user = BUILDER_PROMPT.format(prompt=prompt, agent_count=agent_count)
+    raw = await chat(system, [{"role": "user", "content": user}], temperature=0.85, max_tokens=4096)
 
-    raw = await chat(system, messages, temperature=0.8)
-
-    # Strip markdown code fences if model wraps in ```json
-    raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    # Extract first JSON object if model added extra text
+    raw = raw.strip()
+    # Strip markdown fences
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip()
     start, end = raw.find("{"), raw.rfind("}") + 1
-    if start == -1 or end == 0:
-        raise ValueError(f"Model did not return valid JSON. Got: {raw[:200]}")
-    raw = raw[start:end]
-    data = json.loads(raw)
+    if start == -1:
+        raise ValueError(f"No JSON in response: {raw[:300]}")
+    data = json.loads(raw[start:end])
 
-    agents = []
     names = [a["name"] for a in data["agents"]]
-
+    agents = []
     for a in data["agents"]:
-        # Build relationships to every other agent
-        relationships = [
-            RelationshipEntry(target_name=n)
-            for n in names if n != a["name"]
-        ]
+        relationships = [RelationshipEntry(target_name=n) for n in names if n != a["name"]]
         agents.append(Agent(
             name=a["name"],
             age=a["age"],
             background=a["background"],
             personality_traits=a["personality_traits"],
+            speaking_style=a.get("speaking_style", ""),
+            current_grievance=a.get("current_grievance", ""),
             mood=MoodState(**a["mood"]),
             relationships=relationships,
         ))
 
     return World(
         name=data["name"],
-        scene_description=data["scene_description"],
         location=data["location"],
+        scene_description=data["scene_description"],
         atmosphere=data["atmosphere"],
         agents=agents,
-        tension=data.get("tension", 30),
+        tension=data.get("tension", 40),
         noise=data.get("noise", 40),
-        warmth=data.get("warmth", 60),
+        warmth=data.get("warmth", 40),
     )

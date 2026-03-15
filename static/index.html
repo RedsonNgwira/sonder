@@ -175,49 +175,55 @@
 <script>
 let ws = null;
 let currentWorld = null;
-let agents = {};
+let wsReady = false;
 
 // ── WebSocket ──────────────────────────────────────────────────────────────
 
 function connectWS(worldId) {
-  if (ws) ws.close();
+  if (ws) { ws.onclose = null; ws.close(); }
+  wsReady = false;
   ws = new WebSocket(`ws://${location.host}/ws/${worldId}`);
+
+  ws.onopen = () => { wsReady = true; setSending(false); };
 
   ws.onmessage = (e) => {
     const data = JSON.parse(e.data);
     if (data.type === 'atmosphere') {
       updateAtmosphere(data);
     } else if (data.type === 'error') {
-      appendMessage({ speaker: '⚠ error', text: data.message, action: null, timestamp: Date.now()/1000 });
+      appendMessage({ speaker: '⚠', text: data.message, action: null, timestamp: Date.now()/1000 });
     } else if (data.speaker) {
       appendMessage(data);
       logEvent(`${data.speaker} spoke`);
     }
   };
 
-  ws.onclose = () => setTimeout(() => connectWS(worldId), 2000);
+  ws.onclose = () => {
+    wsReady = false;
+    setTimeout(() => { if (currentWorld) connectWS(currentWorld.id); }, 2000);
+  };
 }
 
 function sendMessage() {
-  if (!ws || !currentWorld) return;
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!text) { triggerAgentTurn(); return; }
+  if (!wsReady || !currentWorld) return;
   input.value = '';
-  ws.send(JSON.stringify({ text }));
-  setSending(true);
-  setTimeout(() => setSending(false), 3000);
+  if (text) {
+    // Immediately show user message in UI
+    appendMessage({ speaker: 'You', text, action: null, timestamp: Date.now()/1000 });
+    ws.send(JSON.stringify({ text }));
+  }
+  // Don't disable send — agents respond async, user can keep typing
 }
 
 function triggerAgentTurn() {
-  if (ws) ws.send(JSON.stringify({ text: '' }));
+  if (wsReady) ws.send(JSON.stringify({ text: '' }));
 }
 
 function setSending(v) {
   document.getElementById('send-btn').disabled = v;
 }
-
-// ── UI updates ─────────────────────────────────────────────────────────────
 
 function appendMessage(msg) {
   const conv = document.getElementById('conversation');
@@ -230,7 +236,6 @@ function appendMessage(msg) {
   `;
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
-  setSending(false);
 }
 
 function updateAtmosphere(data) {
@@ -345,16 +350,14 @@ async function createWorld() {
 
 async function loadWorld(id, worldData) {
   currentWorld = worldData || await fetch(`/api/worlds/${id}`).then(r => r.json());
+  currentWorld.id = currentWorld.id || id;
   document.getElementById('world-name').textContent = currentWorld.name;
   document.getElementById('atmosphere-text').textContent = currentWorld.atmosphere;
   document.getElementById('conversation').innerHTML = '';
-
-  // Replay existing conversation
   (currentWorld.conversation || []).forEach(appendMessage);
-
   renderAgents(currentWorld.agents);
   updateAtmosphere({ tension: currentWorld.tension, noise: currentWorld.noise, warmth: currentWorld.warmth });
-  connectWS(id);
+  connectWS(currentWorld.id);
   hideWorldModal();
 }
 

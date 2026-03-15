@@ -28,6 +28,8 @@ class Agent(BaseModel):
     age: int
     background: str
     personality_traits: list[str]
+    speaking_style: str = ""
+    current_grievance: str = ""
     mood: MoodState = Field(default_factory=MoodState)
     relationships: list[RelationshipEntry] = []
     memory: list[str] = []   # last N exchanges as strings
