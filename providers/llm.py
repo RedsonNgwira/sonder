@@ -12,11 +12,9 @@ _OAUTH_BASE_URLS = {
     "qwen-portal": "https://portal.qwen.ai/v1",
 }
 
-# LiteLLM model name mapping for OAuth providers
-_OAUTH_MODEL_MAP = {
-    "qwen-portal/coder-model":  "openai/qwen-coder-plus-latest",
-    "qwen-portal/vision-model": "openai/qwen-vl-plus-latest",
-}
+# LiteLLM model name mapping for OAuth providers.
+# The portal accepts the alias directly (coder-model, vision-model).
+_OAUTH_MODEL_MAP: dict[str, str] = {}
 
 
 async def chat(
@@ -44,8 +42,13 @@ async def chat(
                 f"Run `python onboard.py` and log in again."
             )
         api_key = token
-        # Use resource_url from token if present, else default base URL
-        base_url = (token_data or {}).get("resource_url") or _OAUTH_BASE_URLS.get(provider)
+        # resource_url from Qwen may be bare hostname — normalise to https://.../v1
+        raw_url = (token_data or {}).get("resource_url") or _OAUTH_BASE_URLS.get(provider, "")
+        if raw_url and not raw_url.startswith("http"):
+            raw_url = f"https://{raw_url}"
+        if raw_url and not raw_url.rstrip("/").endswith("/v1"):
+            raw_url = raw_url.rstrip("/") + "/v1"
+        base_url = raw_url or _OAUTH_BASE_URLS.get(provider)
         model = _OAUTH_MODEL_MAP.get(cfg.model, cfg.model.split("/", 1)[-1])
         if not model.startswith("openai/"):
             model = f"openai/{model}"
@@ -63,6 +66,8 @@ async def chat(
         kwargs["api_key"] = api_key
     if base_url:
         kwargs["api_base"] = base_url
+    if provider in OAUTH_PROVIDERS:
+        kwargs["extra_headers"] = {"User-Agent": "openclaw"}
 
     response = await litellm.acompletion(**kwargs)
     return response.choices[0].message.content.strip()

@@ -133,7 +133,7 @@ def run():
     choices = []
     for pid, name, _, _, _, note_txt in PROVIDERS:
         badge = f"  [{note_txt}]" if note_txt else ""
-        choices.append(questionary.Choice(title=f"{name}{dim(badge)}", value=pid))
+        choices.append(questionary.Choice(title=f"{name}{badge}", value=pid))
 
     provider_id = questionary.select(
         "  Choose a provider",
