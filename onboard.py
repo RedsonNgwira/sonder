@@ -43,6 +43,10 @@ BANNER = (
     "\033[2m│\033[0m   \033[2mhas a life as vivid as your own.\033[0m        \033[2m│\033[0m\n"
     "\033[2m│\033[0m                                         \033[2m│\033[0m\n"
     "\033[2m└─────────────────────────────────────────┘\033[0m\n"
+    "\n"
+    "  \033[33m⚠\033[0m  \033[2mSonder can simulate real people, including public figures.\033[0m\n"
+    "  \033[2m   You are responsible for how you use it. Do not share\033[0m\n"
+    "  \033[2m   simulations of real people publicly without their consent.\033[0m\n"
 )
 
 STYLE = Style([
