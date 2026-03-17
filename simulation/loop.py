@@ -9,6 +9,7 @@ from db.models import World, Message
 from db.database import save_world
 from simulation.agent import AgentRunner
 from simulation.agent_loader import reload_agents_if_changed
+from plugins import on_agent_speak
 
 
 def _pick_speakers(world: World) -> list:
@@ -54,6 +55,7 @@ async def run_turn(world: World, user_message: Message | None, broadcast) -> Wor
             AgentRunner(agent, world.scene_description).update_mood(response, world.agents)
 
         await broadcast(response.model_dump())
+        await on_agent_speak(response.speaker, response.text)
         await asyncio.sleep(0.8)
 
     if world.agents:

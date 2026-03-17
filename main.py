@@ -20,6 +20,7 @@ from db.models import Message
 from simulation.world_builder import build_world
 from simulation.loop import run_turn
 from simulation.narrator import narrate
+from plugins import on_world_start as _plugin_world_start
 
 STATIC_DIR = Path(__file__).parent / "static"
 connections: dict[str, list[WebSocket]] = {}
@@ -203,6 +204,10 @@ def get_world(world_id: str):
 async def simulation_ws(websocket: WebSocket, world_id: str):
     await websocket.accept()
     connections.setdefault(world_id, []).append(websocket)
+
+    world = load_world(world_id)
+    if world:
+        await _plugin_world_start(world)
 
     user_queue: asyncio.Queue = asyncio.Queue()
     stop = asyncio.Event()
