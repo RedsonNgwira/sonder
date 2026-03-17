@@ -12,6 +12,10 @@ You can watch. You can whisper to someone. You can stay silent and see what happ
 
 ---
 
+> ⚠️ **Responsible use** — Sonder can simulate real people, including public figures. You are responsible for how you use it. Do not share simulations of real people publicly without their consent.
+
+---
+
 ## What it looks like
 
 You type: *"Five coworkers watching football at someone's flat. The team is losing. One of them hasn't been paid in three weeks."*
