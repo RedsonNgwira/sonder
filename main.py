@@ -78,6 +78,7 @@ class ConfigUpdate(BaseModel):
     keys: dict | None = None
     max_agents: int | None = None
     simulation_tick_ms: int | None = None
+    message_pace_ms: int | None = None
     web_search_enabled: bool | None = None
 
 

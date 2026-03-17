@@ -38,6 +38,7 @@ class SonderConfig(BaseModel):
     custom_providers: dict[str, CustomProvider] = {}
     max_agents: int = 20
     simulation_tick_ms: int = 1500
+    message_pace_ms: int = 800   # delay between agent messages within a tick
     host: str = "0.0.0.0"
     port: int = 8080
     open_browser: bool = True

@@ -37,8 +37,11 @@
   <label>Max Agents</label>
   <input id="max-agents" type="number" min="2" max="20" />
 
-  <label>Simulation Speed (ms between turns)</label>
-  <input id="tick" type="number" min="500" max="5000" step="100" />
+  <label>Simulation Speed (ms between ticks)</label>
+  <input id="tick" type="number" min="500" max="10000" step="100" />
+
+  <label>Message Pace (ms between messages within a tick)</label>
+  <input id="pace" type="number" min="200" max="5000" step="100" />
 
   <div class="row">
     <label>Web Search (enriches agent creation)</label>
@@ -55,6 +58,7 @@ fetch('/api/config').then(r => r.json()).then(c => {
   document.getElementById('api-base').value = c.api_base || '';
   document.getElementById('max-agents').value = c.max_agents || 20;
   document.getElementById('tick').value = c.simulation_tick_ms || 1500;
+  document.getElementById('pace').value = c.message_pace_ms || 800;
   document.getElementById('web-search').checked = c.web_search_enabled || false;
 });
 
@@ -65,6 +69,7 @@ async function save() {
     api_base: document.getElementById('api-base').value,
     max_agents: parseInt(document.getElementById('max-agents').value),
     simulation_tick_ms: parseInt(document.getElementById('tick').value),
+    message_pace_ms: parseInt(document.getElementById('pace').value),
     web_search_enabled: document.getElementById('web-search').checked,
   };
   const key = document.getElementById('api-key').value;
