@@ -5,19 +5,38 @@
 <title>Sonder — Settings</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 40px; width: 480px; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 40px; width: 520px; }
   h1 { font-size: 22px; margin-bottom: 28px; }
-  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; margin-top: 18px; }
-  input, select { width: 100%; padding: 10px 14px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; outline: none; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin: 28px 0 14px; }
+  label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+  input, select { width: 100%; padding: 10px 14px; background: #111; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 14px; outline: none; font-family: inherit; }
   input:focus, select:focus { border-color: #6366f1; }
-  .row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
-  .row label { margin: 0; flex: 1; }
-  .btn { padding: 11px 20px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 24px; width: 100%; }
+  .row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .row label { margin: 0; flex: 1; font-size: 13px; color: #aaa; }
+  .row input[type=number] { width: 100px; flex-shrink: 0; }
+  .row input[type=checkbox] { width: auto; }
+  .btn { padding: 11px 20px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
   .btn:hover { background: #5254cc; }
+  .btn-sm { padding: 8px 14px; background: #222; border: 1px solid #333; color: #aaa; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .btn-sm:hover { border-color: #6366f1; color: #e8e8e8; }
   .back { display: inline-block; margin-bottom: 20px; color: #6366f1; text-decoration: none; font-size: 14px; }
   .status { margin-top: 12px; font-size: 13px; text-align: center; min-height: 18px; }
   .ok { color: #4ade80; } .err { color: #f87171; }
+  .provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .provider-btn { padding: 10px 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #aaa; font-size: 13px; cursor: pointer; text-align: left; transition: all 0.15s; }
+  .provider-btn:hover { border-color: #6366f1; color: #e8e8e8; }
+  .provider-btn.active { border-color: #6366f1; background: #1e1e3a; color: #e8e8e8; }
+  .provider-btn .note { font-size: 11px; color: #555; margin-top: 2px; }
+  .provider-btn.active .note { color: #6366f1; }
+  .field { margin-bottom: 14px; }
+  .key-row { display: flex; gap: 8px; }
+  .key-row input { flex: 1; }
+  .model-row { display: flex; gap: 8px; }
+  .model-row select { flex: 1; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #333; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #1e3a1e; color: #4ade80; margin-left: 6px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -25,27 +44,41 @@
   <a class="back" href="/">← Back to Sonder</a>
   <h1>⚙ Settings</h1>
 
-  <label>Model</label>
-  <input id="model" placeholder="e.g. anthropic/claude-sonnet-4-5" />
+  <h2>Provider</h2>
+  <div class="provider-grid" id="provider-grid"></div>
 
-  <label>API Key</label>
-  <input id="api-key" type="password" placeholder="Leave blank to keep existing" />
+  <div id="key-section" class="field" style="display:none">
+    <label id="key-label">API Key</label>
+    <div class="key-row">
+      <input id="api-key" type="password" placeholder="Paste your API key…" oninput="onKeyInput()" />
+      <button class="btn-sm" onclick="fetchModels()">Fetch Models</button>
+    </div>
+    <div id="key-status" style="font-size:12px; color:#555; margin-top:6px;"></div>
+  </div>
 
-  <label>API Base URL <span style="color:#555">(optional, for custom endpoints)</span></label>
-  <input id="api-base" placeholder="https://..." />
+  <div id="model-section" class="field" style="display:none">
+    <label>Model <span id="model-spinner" style="display:none"><span class="spinner"></span></span></label>
+    <div class="model-row">
+      <select id="model-select" onchange="onModelSelect()"></select>
+    </div>
+  </div>
 
-  <label>Max Agents</label>
-  <input id="max-agents" type="number" min="2" max="20" />
-
-  <label>Simulation Speed (ms between ticks)</label>
-  <input id="tick" type="number" min="500" max="10000" step="100" />
-
-  <label>Message Pace (ms between messages within a tick)</label>
-  <input id="pace" type="number" min="200" max="5000" step="100" />
-
+  <h2>Simulation</h2>
   <div class="row">
-    <label>Web Search (enriches agent creation)</label>
-    <input type="checkbox" id="web-search" style="width:auto" />
+    <label>Speed between ticks (ms)</label>
+    <input type="number" id="tick" min="500" max="10000" step="100" value="1500" />
+  </div>
+  <div class="row">
+    <label>Pace between messages (ms)</label>
+    <input type="number" id="pace" min="200" max="5000" step="100" value="800" />
+  </div>
+  <div class="row">
+    <label>Max agents per world</label>
+    <input type="number" id="max-agents" min="2" max="20" value="20" />
+  </div>
+  <div class="row">
+    <label>Web search during world creation</label>
+    <input type="checkbox" id="web-search" />
   </div>
 
   <button class="btn" onclick="save()">Save Settings</button>
@@ -53,38 +86,134 @@
 </div>
 
 <script>
-fetch('/api/config').then(r => r.json()).then(c => {
-  document.getElementById('model').value = c.model || '';
-  document.getElementById('api-base').value = c.api_base || '';
-  document.getElementById('max-agents').value = c.max_agents || 20;
-  document.getElementById('tick').value = c.simulation_tick_ms || 1500;
-  document.getElementById('pace').value = c.message_pace_ms || 800;
-  document.getElementById('web-search').checked = c.web_search_enabled || false;
-});
+let providers = [];
+let selectedProvider = '';
+let selectedModel = '';
+
+async function init() {
+  const [cfg, provs] = await Promise.all([
+    fetch('/api/config').then(r => r.json()),
+    fetch('/api/providers').then(r => r.json()),
+  ]);
+
+  providers = provs;
+  selectedProvider = cfg.provider || '';
+  selectedModel = cfg.model || '';
+
+  document.getElementById('tick').value = cfg.simulation_tick_ms || 1500;
+  document.getElementById('pace').value = cfg.message_pace_ms || 800;
+  document.getElementById('max-agents').value = cfg.max_agents || 20;
+  document.getElementById('web-search').checked = cfg.web_search_enabled || false;
+
+  renderProviders();
+  if (selectedProvider) selectProvider(selectedProvider, false);
+}
+
+function renderProviders() {
+  const grid = document.getElementById('provider-grid');
+  grid.innerHTML = providers.map(p => `
+    <button class="provider-btn ${p.id === selectedProvider ? 'active' : ''}" onclick="selectProvider('${p.id}')">
+      <div>${p.name} ${p.has_key ? '<span class="badge">✓ key</span>' : ''}</div>
+      <div class="note">${p.note || (p.needs_key ? 'API key required' : 'No key needed')}</div>
+    </button>
+  `).join('');
+}
+
+async function selectProvider(id, fetchOnSelect = true) {
+  selectedProvider = id;
+  renderProviders();
+
+  const p = providers.find(p => p.id === id);
+  if (!p) return;
+
+  const keySection = document.getElementById('key-section');
+  const modelSection = document.getElementById('model-section');
+
+  if (p.needs_key) {
+    keySection.style.display = 'block';
+    document.getElementById('key-label').textContent = `${p.name} API Key`;
+    document.getElementById('api-key').value = '';
+    document.getElementById('key-status').textContent = p.has_key ? '✓ Key already saved' : '';
+  } else {
+    keySection.style.display = 'none';
+  }
+
+  if (fetchOnSelect) await fetchModels();
+}
+
+async function fetchModels() {
+  const key = document.getElementById('api-key').value.trim();
+  const spinner = document.getElementById('model-spinner');
+  const modelSection = document.getElementById('model-section');
+  const sel = document.getElementById('model-select');
+
+  spinner.style.display = 'inline';
+  modelSection.style.display = 'block';
+  sel.innerHTML = '<option>Loading…</option>';
+
+  try {
+    const data = await fetch('/api/fetch-models', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ provider: selectedProvider, key })
+    }).then(r => r.json());
+
+    const models = data.models || [];
+    if (!models.length) {
+      sel.innerHTML = '<option value="">No models found — enter manually</option>';
+      const opt = document.createElement('option');
+      sel.innerHTML = '';
+      const manual = document.createElement('input');
+      // fallback: show text input
+      modelSection.innerHTML = `<label>Model</label><input id="model-select" value="${selectedModel}" placeholder="e.g. cerebras/llama3.1-8b" style="width:100%;padding:10px 14px;background:#111;border:1px solid #333;border-radius:8px;color:#e8e8e8;font-size:14px;outline:none;" />`;
+    } else {
+      sel.innerHTML = models.map(m => `<option value="${m}" ${m === selectedModel ? 'selected' : ''}>${m}</option>`).join('');
+      if (!models.includes(selectedModel) && models.length) sel.value = models[0];
+      selectedModel = sel.value;
+    }
+    if (key) document.getElementById('key-status') && (document.getElementById('key-status').textContent = '✓ Key valid');
+  } catch(e) {
+    sel.innerHTML = `<option value="${selectedModel}">${selectedModel}</option>`;
+  } finally {
+    spinner.style.display = 'none';
+  }
+}
+
+function onKeyInput() {
+  document.getElementById('key-status').textContent = '';
+}
+
+function onModelSelect() {
+  selectedModel = document.getElementById('model-select').value;
+}
 
 async function save() {
   const status = document.getElementById('status');
+  const modelEl = document.getElementById('model-select');
+  const model = modelEl.value || modelEl.value || selectedModel;
+  const key = document.getElementById('api-key').value.trim();
+
   const body = {
-    model: document.getElementById('model').value,
-    api_base: document.getElementById('api-base').value,
-    max_agents: parseInt(document.getElementById('max-agents').value),
+    model,
     simulation_tick_ms: parseInt(document.getElementById('tick').value),
     message_pace_ms: parseInt(document.getElementById('pace').value),
+    max_agents: parseInt(document.getElementById('max-agents').value),
     web_search_enabled: document.getElementById('web-search').checked,
   };
-  const key = document.getElementById('api-key').value;
-  if (key) body.api_key = key;
+  if (key) body.keys = { [selectedProvider]: key };
 
   try {
-    const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    const d = await r.json();
+    await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     status.className = 'status ok';
     status.textContent = '✓ Saved';
+    setTimeout(() => status.textContent = '', 2000);
   } catch(e) {
     status.className = 'status err';
     status.textContent = '✗ ' + e.message;
   }
 }
+
+init();
 </script>
 </body>
 </html>

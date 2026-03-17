@@ -51,7 +51,23 @@ def health():
 @app.get("/api/config")
 def api_get_config():
     cfg = get_config()
-    return {k: v for k, v in cfg.model_dump().items() if k != "keys"}
+    d = {k: v for k, v in cfg.model_dump().items() if k != "keys"}
+    d["provider"] = cfg.get_provider()
+    return d
+
+@app.get("/api/providers")
+def api_providers():
+    from onboard import PROVIDERS
+    cfg = get_config()
+    return [{"id": p[0], "name": p[1], "note": p[5], "needs_key": p[2] is not None, "has_key": bool(cfg.keys.get(p[0]) or (p[2] and os.environ.get(p[2] or "")))} for p in PROVIDERS]
+
+@app.post("/api/fetch-models")
+async def api_fetch_models(body: dict):
+    from onboard import fetch_models
+    provider = body.get("provider", "")
+    key = body.get("key", "") or get_config().keys.get(provider, "")
+    models = fetch_models(provider, key)
+    return {"models": models}
 
 
 @app.get("/api/setup/needed")
