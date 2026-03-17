@@ -32,6 +32,19 @@ PROVIDERS = [
     ("custom",      "Custom (OpenAI-compatible)", None,                    None,                                          "",                                       "LM Studio, vLLM, etc."),
 ]
 
+BANNER = (
+    "\n"
+    "\033[2m┌─────────────────────────────────────────┐\033[0m\n"
+    "\033[2m│\033[0m                                         \033[2m│\033[0m\n"
+    "\033[2m│\033[0m   \033[38;5;99m█▀ █▀█ █▄ █ █▀▄ █▀▀ █▀█\033[0m               \033[2m│\033[0m\n"
+    "\033[2m│\033[0m   \033[38;5;99m▄█ █▄█ █ ▀█ █▄▀ ██▄ █▀▄\033[0m               \033[2m│\033[0m\n"
+    "\033[2m│\033[0m                                         \033[2m│\033[0m\n"
+    "\033[2m│\033[0m   \033[2mthe realization that each passerby\033[0m      \033[2m│\033[0m\n"
+    "\033[2m│\033[0m   \033[2mhas a life as vivid as your own.\033[0m        \033[2m│\033[0m\n"
+    "\033[2m│\033[0m                                         \033[2m│\033[0m\n"
+    "\033[2m└─────────────────────────────────────────┘\033[0m\n"
+)
+
 STYLE = Style([
     ("qmark",     "fg:#00d7ff bold"),
     ("question",  "bold"),
@@ -145,7 +158,8 @@ def run():
 
     cfg = get_config()
 
-    intro("Sonder", "Self-hosted social simulation engine")
+    print(BANNER)
+    intro("Setup", "Configure your provider and model")
 
     if cfg.is_setup():
         print(f"  Provider : {cyan(cfg.get_provider())}")

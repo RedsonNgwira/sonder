@@ -280,5 +280,8 @@ def about_page():
 
 if __name__ == "__main__":
     import uvicorn
+    from onboard import BANNER
     cfg = get_config()
+    print(BANNER)
+    print(f"\033[2m  → http://{cfg.host}:{cfg.port}\033[0m\n")
     uvicorn.run("main:app", host=cfg.host, port=cfg.port, reload=False)
