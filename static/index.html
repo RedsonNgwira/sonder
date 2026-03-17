@@ -198,8 +198,8 @@
       <button class="action-btn" onclick="enterWorld('narrator')" style="padding:12px;">🎭  Narrator only</button>
     </div>
     <div id="entry-name-row" style="display:none; margin-top:20px;">
-      <input id="entry-name" placeholder="Your name in this world…" style="width:100%; padding:10px 12px; background:#111; border:1px solid #333; border-radius:8px; color:#e8e8e8; font-size:14px; outline:none; font-family:inherit;" />
-      <button class="send-btn" style="width:100%; margin-top:10px;" onclick="confirmParticipate()">Enter the room</button>
+      <input id="entry-name" placeholder="Your name in this world…" style="width:100%; padding:10px 12px; background:#111; border:1px solid #333; border-radius:8px; color:#e8e8e8; font-size:14px; outline:none; font-family:inherit;" onkeydown="if(event.key==='Enter') confirmParticipate()" />
+      <button id="entry-confirm-btn" class="send-btn" style="width:100%; margin-top:10px;" onclick="confirmParticipate()">Enter the room</button>
     </div>
   </div>
 </div>
@@ -583,7 +583,7 @@ async function createWorld() {
         } else if (item.type === 'done') {
           addLine('', '');
           buildModal.classList.add('hidden');
-          loadWorld(item.world.id, item.world);
+          await loadWorld(item.world.id, item.world);
           return;
         } else if (item.type === 'error') {
           throw new Error(item.message);
@@ -598,6 +598,9 @@ async function createWorld() {
 }
 
 async function loadWorld(id, worldData) {
+  // Kill any existing WebSocket cleanly — prevent onclose auto-reconnect from bypassing entry modal
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  wsReady = false;
   currentWorld = worldData || await fetch(`/api/worlds/${id}`).then(r => r.json());
   currentWorld.id = currentWorld.id || id;
   document.getElementById('world-name').textContent = currentWorld.name;
@@ -611,16 +614,18 @@ async function loadWorld(id, worldData) {
   }
   updateAtmosphere({ tension: currentWorld.tension, noise: currentWorld.noise, warmth: currentWorld.warmth });
   hideWorldModal();
-  // Show entry modal
+  // Show entry modal — reset state first in case of previous participate click
   document.getElementById('entry-world-name').textContent = currentWorld.name;
   document.getElementById('entry-name-row').style.display = 'none';
+  document.getElementById('entry-name').value = '';
+  document.querySelectorAll('#entry-modal .send-btn, #entry-modal .action-btn').forEach(b => b.style.display = '');
   document.getElementById('entry-modal').classList.remove('hidden');
 }
 
 function enterWorld(mode) {
   userMode = mode;
   if (mode === 'participate') {
-    document.querySelectorAll('#entry-modal .send-btn, #entry-modal .action-btn').forEach(b => b.style.display = 'none');
+    document.querySelectorAll('#entry-modal .send-btn:not(#entry-confirm-btn), #entry-modal .action-btn').forEach(b => b.style.display = 'none');
     document.getElementById('entry-name-row').style.display = 'block';
     document.getElementById('entry-name').focus();
     return;
