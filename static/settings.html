@@ -2,11 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sonder — Settings</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 40px; width: 520px; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 40px; width: 100%; max-width: 520px; }
+  @media (max-width: 540px) {
+    body { padding: 0; align-items: stretch; }
+    .card { border-radius: 0; border: none; padding: 24px 18px; min-height: 100vh; }
+    .provider-grid { grid-template-columns: 1fr 1fr; }
+    .row { flex-wrap: wrap; gap: 6px; }
+    .row input[type=number] { width: 80px; }
+  }
   h1 { font-size: 22px; margin-bottom: 28px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #555; margin: 28px 0 14px; }
   label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
