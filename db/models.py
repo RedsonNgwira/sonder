@@ -55,4 +55,5 @@ class Message(BaseModel):
     speaker: str
     text: str
     action: Optional[str] = None
+    target: Optional[str] = None   # set for whispers — only that agent responds
     timestamp: float = Field(default_factory=time.time)

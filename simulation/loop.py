@@ -38,6 +38,12 @@ async def run_turn(world: World, user_message: Message | None, broadcast) -> Wor
         await broadcast(user_message.model_dump())
 
     speakers = _pick_speakers(world)
+    # Whisper: only the targeted agent responds
+    if user_message and user_message.target:
+        target = next((a for a in world.agents if a.name.lower() == user_message.target.lower()), None)
+        if target:
+            speakers = [target]
+
     runners = [AgentRunner(a, world.scene_description) for a in speakers]
 
     responses = await asyncio.gather(

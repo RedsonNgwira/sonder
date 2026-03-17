@@ -228,7 +228,9 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
                 data = await websocket.receive_text()
                 payload = json.loads(data)
                 if payload.get("text"):
-                    user_queue.put_nowait(Message(speaker="You", text=payload["text"]))
+                    text = payload["text"]
+                    target = payload.get("target") or None
+                    user_queue.put_nowait(Message(speaker="You", text=text, target=target))
         except Exception:
             stop.set()
 

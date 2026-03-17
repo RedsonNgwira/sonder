@@ -289,8 +289,15 @@ function sendMessage() {
   }
 
   if (!wsReady) return;
-  appendMessage({ speaker: 'You', text, action: null, timestamp: Date.now()/1000 });
-  ws.send(JSON.stringify({ text }));
+  // Parse whisper target: "[to Name] message" or prefilled by whisper button
+  let target = null, displayText = text;
+  const whisperMatch = text.match(/^\[to ([^\]]+)\]\s*(.*)/i);
+  if (whisperMatch) {
+    target = whisperMatch[1];
+    displayText = whisperMatch[2] || text;
+  }
+  appendMessage({ speaker: 'You', text: displayText, action: target ? `whispers to ${target}` : null, timestamp: Date.now()/1000 });
+  ws.send(JSON.stringify({ text: displayText, target }));
 }
 
 function triggerAgentTurn() {
