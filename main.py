@@ -286,7 +286,8 @@ def onboarding():
 def about_page():
     return FileResponse(STATIC_DIR / "about.html")
 
-
+@app.get("/settings")
+def settings_page():
     return FileResponse(STATIC_DIR / "settings.html")
 
 
