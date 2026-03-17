@@ -99,15 +99,37 @@ def fetch_models(provider_id: str, api_key: str) -> list[str]:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=12) as r:
             return _j.loads(r.read())
+    def std(pid, url, filt=None):
+        data = get(url).get("data", [])
+        return [f"{pid}/{m['id']}" for m in data if (filt is None or filt(m['id']))]
     try:
         if provider_id == "openrouter":
-            return [f"openrouter/{m['id']}" for m in get("https://openrouter.ai/api/v1/models").get("data", [])]
+            return std("openrouter", "https://openrouter.ai/api/v1/models")
         if provider_id == "groq":
-            return [f"groq/{m['id']}" for m in get("https://api.groq.com/openai/v1/models").get("data", [])]
+            return std("groq", "https://api.groq.com/openai/v1/models")
         if provider_id == "cerebras":
-            return [f"cerebras/{m['id']}" for m in get("https://api.cerebras.ai/v1/models").get("data", [])]
+            return std("cerebras", "https://api.cerebras.ai/v1/models")
         if provider_id == "openai":
-            return sorted([f"openai/{m['id']}" for m in get("https://api.openai.com/v1/models").get("data", []) if "gpt" in m["id"]])
+            return sorted(std("openai", "https://api.openai.com/v1/models", lambda i: "gpt" in i))
+        if provider_id == "mistral":
+            return std("mistral", "https://api.mistral.ai/v1/models")
+        if provider_id == "xai":
+            return std("xai", "https://api.x.ai/v1/models")
+        if provider_id == "together":
+            return std("together", "https://api.together.xyz/v1/models")
+        if provider_id == "venice":
+            return std("venice", "https://api.venice.ai/api/v1/models")
+        if provider_id == "gemini":
+            data = get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}").get("models", [])
+            return [f"gemini/{m['name'].split('/')[-1]}" for m in data if "generateContent" in m.get("supportedGenerationMethods", [])]
+        if provider_id == "anthropic":
+            req = urllib.request.Request(
+                "https://api.anthropic.com/v1/models",
+                headers={**headers, "anthropic-version": "2023-06-01"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as r:
+                data = _j.loads(r.read()).get("data", [])
+            return [f"anthropic/{m['id']}" for m in data]
         if provider_id == "ollama":
             return [f"ollama/{m['name']}" for m in get("http://localhost:11434/api/tags").get("models", [])]
     except Exception:
