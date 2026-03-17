@@ -222,15 +222,20 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
         for ws in dead:
             connections[world_id].remove(ws)
 
+    participant_name: list[str] = ["You"]  # mutable container so receive_loop can set it
+
     async def receive_loop():
         try:
             while True:
                 data = await websocket.receive_text()
                 payload = json.loads(data)
-                if payload.get("text"):
+                if payload.get("join"):
+                    participant_name[0] = payload["join"]
+                elif payload.get("text"):
                     text = payload["text"]
                     target = payload.get("target") or None
-                    user_queue.put_nowait(Message(speaker="You", text=text, target=target))
+                    speaker = payload.get("speaker") or participant_name[0]
+                    user_queue.put_nowait(Message(speaker=speaker, text=text, target=target))
         except Exception:
             stop.set()
 
@@ -246,7 +251,7 @@ async def simulation_ws(websocket: WebSocket, world_id: str):
                 user_msg = user_queue.get_nowait()
 
             try:
-                await run_turn(world, user_msg, broadcast)
+                await run_turn(world, user_msg, broadcast, participant_name[0] if participant_name[0] != "You" else None)
             except Exception as e:
                 msg = str(e)
                 if "RateLimit" in msg or "quota" in msg.lower() or "429" in msg:

@@ -28,7 +28,7 @@ def _pick_speakers(world: World) -> list:
     return picked
 
 
-async def run_turn(world: World, user_message: Message | None, broadcast) -> World:
+async def run_turn(world: World, user_message: Message | None, broadcast, participant: str | None = None) -> World:
     # Hot-reload agents from .md files if they've changed
     if world.slug:
         world.agents, changed = reload_agents_if_changed(world.slug, world.agents)
@@ -47,7 +47,7 @@ async def run_turn(world: World, user_message: Message | None, broadcast) -> Wor
     runners = [AgentRunner(a, world.scene_description) for a in speakers]
 
     responses = await asyncio.gather(
-        *[r.respond(world.conversation, world.agents) for r in runners],
+        *[r.respond(world.conversation, world.agents, participant) for r in runners],
         return_exceptions=True,
     )
 

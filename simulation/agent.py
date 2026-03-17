@@ -40,8 +40,11 @@ class AgentRunner:
         self.agent = agent
         self.scene = scene
 
-    def _prompt(self, all_agents: list[Agent]) -> str:
-        other_names = ", ".join(a.name for a in all_agents if a.name != self.agent.name)
+    def _prompt(self, all_agents: list[Agent], participant: str | None = None) -> str:
+        others = [a.name for a in all_agents if a.name != self.agent.name]
+        if participant and participant not in ("You", ""):
+            others.append(participant)
+        other_names = ", ".join(others)
         rels = "\n".join(
             f"  {r.target_name}: trust={r.trust} hostility={r.hostility} affection={r.affection}"
             for r in self.agent.relationships
@@ -63,12 +66,12 @@ class AgentRunner:
             scene=self.scene,
         ) + notes_section
 
-    async def respond(self, conversation: list[Message], all_agents: list[Agent]) -> Message | None:
+    async def respond(self, conversation: list[Message], all_agents: list[Agent], participant: str | None = None) -> Message | None:
         history = [
             {"role": "user", "content": f"{m.speaker}: {('*' + m.action + '* ') if m.action else ''}{m.text}".strip()}
             for m in conversation[-20:]
         ]
-        raw = await chat(self._prompt(all_agents), history, temperature=0.95, max_tokens=180)
+        raw = await chat(self._prompt(all_agents, participant), history, temperature=0.95, max_tokens=180)
 
         if "[silent]" in raw.lower():
             return None

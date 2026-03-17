@@ -186,7 +186,24 @@
   </div>
 </div>
 
-<!-- Building modal -->
+<!-- Entry modal -->
+<div class="overlay hidden" id="entry-modal">
+  <div class="modal" style="width:420px; text-align:center;">
+    <div style="font-size:28px; margin-bottom:16px;">🚪</div>
+    <div style="font-size:17px; font-weight:600; margin-bottom:8px; color:#e8e8e8;">How do you enter this world?</div>
+    <div style="font-size:13px; color:#555; margin-bottom:28px;" id="entry-world-name"></div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button class="send-btn" onclick="enterWorld('observe')">👁  Watch silently</button>
+      <button class="action-btn" onclick="enterWorld('participate')" style="padding:12px;">💬  Participate as a character</button>
+      <button class="action-btn" onclick="enterWorld('narrator')" style="padding:12px;">🎭  Narrator only</button>
+    </div>
+    <div id="entry-name-row" style="display:none; margin-top:20px;">
+      <input id="entry-name" placeholder="Your name in this world…" style="width:100%; padding:10px 12px; background:#111; border:1px solid #333; border-radius:8px; color:#e8e8e8; font-size:14px; outline:none; font-family:inherit;" />
+      <button class="send-btn" style="width:100%; margin-top:10px;" onclick="confirmParticipate()">Enter the room</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="build-modal">
   <div style="text-align:center; max-width:480px; width:100%; padding:0 24px;">
     <div style="font-size:32px; margin-bottom:24px;">🌍</div>
@@ -200,6 +217,8 @@ let ws = null;
 let currentWorld = null;
 let wsReady = false;
 let narratorMode = false;
+let userMode = 'observe';   // 'observe' | 'participate' | 'narrator'
+let userName = 'You';
 
 function toggleNarrator() {
   narratorMode = !narratorMode;
@@ -244,12 +263,16 @@ function appendNarratorMessage(question, answer) {
 
 // ── WebSocket ──────────────────────────────────────────────────────────────
 
-function connectWS(worldId) {
+function connectWS(worldId, participantName) {
   if (ws) { ws.onclose = null; ws.close(); }
   wsReady = false;
   ws = new WebSocket(`ws://${location.host}/ws/${worldId}`);
 
-  ws.onopen = () => { wsReady = true; setSending(false); };
+  ws.onopen = () => {
+    wsReady = true;
+    setSending(false);
+    if (participantName) ws.send(JSON.stringify({ join: participantName }));
+  };
 
   ws.onmessage = (e) => {
     const data = JSON.parse(e.data);
@@ -296,8 +319,8 @@ function sendMessage() {
     target = whisperMatch[1];
     displayText = whisperMatch[2] || text;
   }
-  appendMessage({ speaker: 'You', text: displayText, action: target ? `whispers to ${target}` : null, timestamp: Date.now()/1000 });
-  ws.send(JSON.stringify({ text: displayText, target }));
+  appendMessage({ speaker: userName, text: displayText, action: target ? `whispers to ${target}` : null, timestamp: Date.now()/1000 });
+  ws.send(JSON.stringify({ text: displayText, target, speaker: userName }));
 }
 
 function triggerAgentTurn() {
@@ -582,14 +605,43 @@ async function loadWorld(id, worldData) {
   document.getElementById('conversation').innerHTML = '';
   (currentWorld.conversation || []).forEach(appendMessage);
   renderAgents(currentWorld.agents);
-  // Assign distinct voices — retry after voiceschanged if not ready yet
   buildAgentVoices(currentWorld.agents);
   if (!Object.keys(agentVoices).length) {
     window.speechSynthesis.onvoiceschanged = () => buildAgentVoices(currentWorld.agents);
   }
   updateAtmosphere({ tension: currentWorld.tension, noise: currentWorld.noise, warmth: currentWorld.warmth });
-  connectWS(currentWorld.id);
   hideWorldModal();
+  // Show entry modal
+  document.getElementById('entry-world-name').textContent = currentWorld.name;
+  document.getElementById('entry-name-row').style.display = 'none';
+  document.getElementById('entry-modal').classList.remove('hidden');
+}
+
+function enterWorld(mode) {
+  userMode = mode;
+  if (mode === 'participate') {
+    document.querySelectorAll('#entry-modal .send-btn, #entry-modal .action-btn').forEach(b => b.style.display = 'none');
+    document.getElementById('entry-name-row').style.display = 'block';
+    document.getElementById('entry-name').focus();
+    return;
+  }
+  if (mode === 'narrator') {
+    narratorMode = true;
+    userName = 'You';
+  } else {
+    narratorMode = false;
+    userName = 'You';
+  }
+  document.getElementById('entry-modal').classList.add('hidden');
+  connectWS(currentWorld.id);
+}
+
+function confirmParticipate() {
+  const name = document.getElementById('entry-name').value.trim();
+  userName = name || 'You';
+  narratorMode = false;
+  document.getElementById('entry-modal').classList.add('hidden');
+  connectWS(currentWorld.id, userName);
 }
 
 async function deleteWorld(id, el) {
