@@ -47,6 +47,8 @@ Nobody is being helpful. Nobody is behaving the same way. They're being human.
 
 ## Quickstart
 
+Runs on Linux, macOS, and Android (Termux, Android 7+).
+
 ```bash
 git clone https://github.com/RedsonNgwira/sonder
 cd sonder
