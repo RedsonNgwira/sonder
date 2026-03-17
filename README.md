@@ -18,7 +18,7 @@ You can watch. You can whisper to someone. You can stay silent and see what happ
 
 ## What it looks like
 
-[![Watch the demo](https://img.shields.io/badge/▶_Watch_Demo-Streamable-blue?style=for-the-badge)](https://streamable.com/0c92gk)
+[![Sonder demo](docs/demo-thumb.jpg)](https://streamable.com/0c92gk)
 
 
 You type: *"Five coworkers watching football at someone's flat. The team is losing. One of them hasn't been paid in three weeks."*
