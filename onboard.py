@@ -271,6 +271,21 @@ def run():
         pname = model.split("/")[0]
         updates["custom_providers"] = {pname: {"base_url": base_url, "api_key": api_key, "models": []}}
 
+    # ── Optional Tavily ───────────────────────────────────────────────────────
+    print()
+    if questionary.confirm(
+        "  Add a Tavily API key for better web search? (free at tavily.com, skip to use DuckDuckGo)",
+        default=False, style=STYLE
+    ).ask():
+        if questionary.confirm("  Open https://app.tavily.com/sign-up in browser?", default=True, style=STYLE).ask():
+            webbrowser.open("https://app.tavily.com/sign-up")
+        tavily_key = getpass.getpass("  Paste Tavily API key (starts with tvly-): ").strip()
+        if tavily_key:
+            updates["tavily_api_key"] = tavily_key
+            print(f"  {green('✓')} Tavily enabled — agents will use full web search.")
+        else:
+            print(f"  {dim('Skipped — DuckDuckGo will be used.')}")
+
     save_config(updates)
 
     note("Saved", f"Provider : {provider_name}\nModel    : {model}")
