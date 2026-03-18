@@ -292,5 +292,75 @@ def run():
     outro(f"Run  python main.py  to start.")
 
 
+def _config_menu():
+    from config import get_config, save_config
+    cfg = get_config()
+
+    print(BANNER)
+    intro("Config", f"Provider: {cyan(cfg.get_provider())}  Model: {cyan(cfg.model)}")
+
+    choice = questionary.select(
+        "  What do you want to configure?",
+        choices=[
+            questionary.Choice("Provider & Model", value="provider"),
+            questionary.Choice("Tavily search key", value="tavily"),
+            questionary.Choice("Simulation settings", value="simulation"),
+            questionary.Choice("Exit", value="exit"),
+        ],
+        style=STYLE,
+    ).ask()
+
+    if choice == "provider":
+        run()
+
+    elif choice == "tavily":
+        current = cfg.tavily_api_key
+        if current:
+            print(f"  Current key: {dim(masked(current))}")
+            if not questionary.confirm("  Replace it?", default=False, style=STYLE).ask():
+                outro("No changes.")
+                return
+        if questionary.confirm("  Open https://app.tavily.com/sign-up in browser?", default=True, style=STYLE).ask():
+            webbrowser.open("https://app.tavily.com/sign-up")
+        key = getpass.getpass("  Paste Tavily API key (tvly-…): ").strip()
+        if key:
+            save_config({"tavily_api_key": key})
+            outro("Tavily key saved ✓")
+        else:
+            outro("No changes.")
+
+    elif choice == "simulation":
+        tick = questionary.text(
+            "  Simulation tick ms (time between turns)",
+            default=str(cfg.simulation_tick_ms), style=STYLE
+        ).ask()
+        pace = questionary.text(
+            "  Message pace ms (delay between agent messages)",
+            default=str(cfg.message_pace_ms), style=STYLE
+        ).ask()
+        max_a = questionary.text(
+            "  Max agents per world",
+            default=str(cfg.max_agents), style=STYLE
+        ).ask()
+        save_config({
+            "simulation_tick_ms": int(tick or cfg.simulation_tick_ms),
+            "message_pace_ms": int(pace or cfg.message_pace_ms),
+            "max_agents": int(max_a or cfg.max_agents),
+        })
+        outro("Simulation settings saved ✓")
+
+    else:
+        outro("Bye.")
+
+
 if __name__ == "__main__":
-    run()
+    import argparse
+    parser = argparse.ArgumentParser(prog="onboard")
+    parser.add_argument("command", nargs="?", default="setup",
+                        choices=["setup", "config"], help="setup (default) or config")
+    args = parser.parse_args()
+
+    if args.command == "config":
+        _config_menu()
+    else:
+        run()
