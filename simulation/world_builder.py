@@ -81,7 +81,7 @@ async def build_world(prompt: str, agent_count: int, progress=None) -> World:
     raw = await chat(
         "You are a world-building engine. Return only valid JSON.",
         [{"role": "user", "content": user}],
-        temperature=0.85, max_tokens=4096,
+        temperature=0.85, max_tokens=8192,
     )
 
     raw = raw.strip()
@@ -90,7 +90,25 @@ async def build_world(prompt: str, agent_count: int, progress=None) -> World:
     start, end = raw.find("{"), raw.rfind("}") + 1
     if start == -1:
         raise ValueError(f"No JSON in response: {raw[:300]}")
-    data = json.loads(raw[start:end])
+    raw = raw[start:end]
+
+    # Attempt parse — if it fails, retry once without relationships to get a valid world
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        await _p("⚠️ Retrying world generation…")
+        # Strip relationships from prompt to reduce JSON size
+        simple_prompt = user + "\n\nIMPORTANT: Omit the relationships field from each agent to keep JSON short."
+        raw2 = await chat(
+            "You are a world-building engine. Return only valid JSON.",
+            [{"role": "user", "content": simple_prompt}],
+            temperature=0.7, max_tokens=8192,
+        )
+        raw2 = raw2.strip()
+        if raw2.startswith("```"):
+            raw2 = raw2.split("```")[1].lstrip("json").strip()
+        s2, e2 = raw2.find("{"), raw2.rfind("}") + 1
+        data = json.loads(raw2[s2:e2])
 
     names = [a["name"] for a in data["agents"]]
     world_slug = _slugify(data["name"]) + "-" + str(int(time.time()))[-5:]
