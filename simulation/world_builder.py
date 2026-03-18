@@ -22,9 +22,13 @@ Behavioral research for this scene type:
 Generate exactly {agent_count} people. Each must have:
 - A specific reason to be here right now
 - A concrete emotional state driven by recent events
-- Pre-existing opinions about others in the scene
+- Pre-existing opinions about others in the scene (use real tension — not everyone starts neutral)
 - A dominant personality flaw (jealousy, pride, bitterness, impulsiveness, etc.)
 - A distinct speaking style
+
+For relationships, use realistic values based on who these people actually are to each other.
+High hostility = genuine conflict. Low trust = suspicion. High affection = real warmth.
+Do NOT default everyone to trust=50, hostility=20, affection=30.
 
 Return ONLY valid JSON:
 {{
@@ -48,6 +52,9 @@ Return ONLY valid JSON:
         "sadness": <0-100>,
         "happiness": <0-100>,
         "social_willingness": <0-100>
+      }},
+      "relationships": {{
+        "OtherName": {{"trust": <0-100>, "hostility": <0-100>, "affection": <0-100>}}
       }}
     }}
   ]
@@ -91,7 +98,22 @@ async def build_world(prompt: str, agent_count: int, progress=None) -> World:
     agents = []
     for a in data["agents"]:
         await _p(f"✍️  Writing {a['name']}…")
-        relationships = [RelationshipEntry(target_name=n) for n in names if n != a["name"]]
+        # Use LLM-generated relationships if provided, else default
+        llm_rels = a.get("relationships", {})
+        relationships = []
+        for n in names:
+            if n == a["name"]:
+                continue
+            if n in llm_rels:
+                r = llm_rels[n]
+                relationships.append(RelationshipEntry(
+                    target_name=n,
+                    trust=int(r.get("trust", 50)),
+                    hostility=int(r.get("hostility", 20)),
+                    affection=int(r.get("affection", 30)),
+                ))
+            else:
+                relationships.append(RelationshipEntry(target_name=n))
         agent = Agent(
             name=a["name"],
             age=a["age"],
@@ -121,7 +143,7 @@ async def build_world(prompt: str, agent_count: int, progress=None) -> World:
     write_world_md(world_slug, world.name, world.location,
                    world.scene_description, world.atmosphere, research)
     for agent in agents:
-        write_agent_md(world_slug, agent, research)
+        write_agent_md(world_slug, agent)
 
     await _p(f"✅ {world.name} is ready")
     return world
