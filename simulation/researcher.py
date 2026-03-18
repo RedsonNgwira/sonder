@@ -1,20 +1,15 @@
 """
 simulation/researcher.py — Web search for behavioral grounding.
-Searches for real human behavior patterns relevant to the scene,
-returns a concise research summary to inform agent creation.
+Uses Tavily if TAVILY_API_KEY is configured, otherwise DuckDuckGo (no key needed).
+Falls back gracefully — world creation always works even if search fails.
 """
 import asyncio
 import httpx
 
 
 async def research_scene(scene_prompt: str) -> str:
-    """
-    Generate search queries from the scene, fetch DuckDuckGo snippets,
-    return a behavioral research summary string.
-    Falls back to empty string if search fails — world creation still works.
-    """
     queries = await _generate_queries(scene_prompt)
-    snippets = await asyncio.gather(*[_ddg_search(q) for q in queries[:3]])
+    snippets = await asyncio.gather(*[_search(q) for q in queries[:3]])
     flat = [s for group in snippets for s in group]
     if not flat:
         return ""
@@ -22,7 +17,6 @@ async def research_scene(scene_prompt: str) -> str:
 
 
 async def _generate_queries(scene: str) -> list[str]:
-    """Use the LLM to generate 3 targeted behavioral search queries."""
     from providers.llm import chat
     prompt = (
         "Given this scene, write exactly 3 web search queries to find real human behavioral research "
@@ -34,9 +28,38 @@ async def _generate_queries(scene: str) -> list[str]:
         raw = await chat("You generate search queries.", [{"role": "user", "content": prompt}], max_tokens=100)
         return [q.strip() for q in raw.strip().splitlines() if q.strip()][:3]
     except Exception:
-        # Fallback: derive queries directly from scene words
         words = scene.lower().split()[:6]
         return [f"human behavior {' '.join(words[:4])}", f"psychology {' '.join(words[:3])}"]
+
+
+async def _search(query: str) -> list[str]:
+    """Route to Tavily if key available, else DuckDuckGo."""
+    from config import get_config
+    key = get_config().get_tavily_key()
+    if key:
+        return await _tavily_search(query, key)
+    return await _ddg_search(query)
+
+
+async def _tavily_search(query: str, api_key: str) -> list[str]:
+    """Tavily search — returns full web content optimised for LLMs."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                "https://api.tavily.com/search",
+                json={"query": query, "max_results": 4, "search_depth": "basic"},
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            data = r.json()
+            results = []
+            if data.get("answer"):
+                results.append(data["answer"][:200])
+            for item in data.get("results", [])[:4]:
+                if item.get("content"):
+                    results.append(item["content"][:150])
+            return results
+    except Exception:
+        return await _ddg_search(query)  # fallback to DDG on any error
 
 
 async def _ddg_search(query: str) -> list[str]:

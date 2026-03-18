@@ -43,6 +43,10 @@ class SonderConfig(BaseModel):
     port: int = 8080
     open_browser: bool = True
     web_search_enabled: bool = False
+    tavily_api_key: str = ""     # optional — upgrades search from DuckDuckGo to Tavily
+
+    def get_tavily_key(self) -> str:
+        return self.tavily_api_key or os.environ.get("TAVILY_API_KEY", "")
 
     def get_provider(self) -> str:
         return self.model.split("/")[0]
