@@ -111,6 +111,11 @@ def _load() -> SonderConfig:
         shutil.copy(EXAMPLE_PATH, CONFIG_PATH)
     with open(CONFIG_PATH) as f:
         data = yaml.safe_load(f) or {}
+    # Env var overrides — useful for Docker / CI
+    if os.environ.get("SONDER_MODEL"):
+        data["model"] = os.environ["SONDER_MODEL"]
+    if os.environ.get("SONDER_OPEN_BROWSER") in ("false", "0", "no"):
+        data["open_browser"] = False
     return SonderConfig(**{k: v for k, v in data.items() if v is not None})
 
 

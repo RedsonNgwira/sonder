@@ -1,15 +1,17 @@
 version: "3.8"
 services:
   sonder:
-    image: sonder
     build: .
     ports:
       - "8080:8080"
     volumes:
-      - sonder_data:/app/data
+      - ./worlds:/app/worlds
+      - ./sonder.db:/app/sonder.db
     environment:
       - SONDER_OPEN_BROWSER=false
+      # Set your provider key — pick one:
+      # - GROQ_API_KEY=your_key_here
+      # - GEMINI_API_KEY=your_key_here
+      # - OPENAI_API_KEY=your_key_here
+      # - SONDER_MODEL=groq/llama-3.1-70b-versatile
     restart: unless-stopped
-
-volumes:
-  sonder_data:
