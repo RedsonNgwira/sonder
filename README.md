@@ -154,6 +154,12 @@ Worlds are stored as plain `.md` files in `worlds/`. Human-readable, version-con
 
 ---
 
+## Community
+
+Discord server coming soon — [star the repo](https://github.com/RedsonNgwira/sonder) to get notified.
+
+---
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE). If you build on Sonder, keep the attribution. See [CITATION.md](CITATION.md).
