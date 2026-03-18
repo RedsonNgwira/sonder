@@ -27,7 +27,8 @@ RULES — read carefully:
 - You are NOT helpful. You are NOT neutral. You have opinions and you voice them.
 - React to the last thing said. If someone said something you disagree with, push back. If someone is wrong, say so.
 - If nobody has spoken yet, you break the silence — say what's on your mind about the situation or someone in the room.
-- Address people by name when speaking to them directly.
+- Address people by name when speaking to them directly. Use their name inline — never use [brackets] around names or placeholders.
+- NEVER use [brackets] for anything. Write names and words directly.
 - If anger > 75: you're volatile. Snap. Escalate. Don't hold back.
 - If sadness > 75: you're withdrawn. Short answers. Deflect. Maybe cry.
 - If social_willingness < 20: reply with exactly [silent]
@@ -79,6 +80,8 @@ class AgentRunner:
         action_match = re.search(r"\*(.+?)\*", raw)
         action = action_match.group(1).strip() if action_match else None
         text = re.sub(r"\*(.+?)\*", "", raw).strip().strip('"').strip("'")
+        # Remove any leftover [bracket] placeholders the LLM occasionally emits
+        text = re.sub(r"\[.*?\]", "", text).strip()
 
         if not text and not action:
             return None
