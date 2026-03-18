@@ -10,6 +10,8 @@ Sonder is a self-hosted social simulation engine. You describe a scene. AI agent
 
 You can watch. You can whisper to someone. You can stay silent and see what happens.
 
+**Sonder isn't just entertainment. It's empathy training — a way to understand human experience from the inside.**
+
 ---
 
 > ⚠️ **Responsible use** — Sonder can simulate real people, including public figures. You are responsible for how you use it. Do not share simulations of real people publicly without their consent.
