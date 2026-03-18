@@ -40,6 +40,9 @@ Nobody is being helpful. Nobody is behaving the same way. They're being human.
 - **Whisper system** — send private messages to individual agents mid-scene
 - **Atmosphere tracking** — tension, noise, and warmth evolve as the scene unfolds
 - **Narrator mode** — click 🎭 to step outside the scene and ask an omniscient narrator anything: *"what is Steve thinking but not saying"*, *"who has the most power in this room"*, *"what would happen if I told everyone about the debt"*. The narrator has full access to every agent's backstory, relationships, and internal state — and remembers what it's already told you
+
+> *"closer to a playwright's relationship with their characters than a user's relationship with a chatbot"*
+> — [Jeffrin-dev](https://news.ycombinator.com/item?id=47420182), Hacker News
 - **Free to run** — works with Qwen OAuth (no API key, free), Groq, Gemini free tier, OpenRouter free models, or any local Ollama model
 - **Voice** — click 🔊 on any message to hear it read aloud via browser TTS (free, no setup). Realistic voice plugins (ElevenLabs, Coqui, Piper) documented in [`plugins/PLUGINS.md`](plugins/PLUGINS.md)
 
